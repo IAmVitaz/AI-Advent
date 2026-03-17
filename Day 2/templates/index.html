@@ -3,55 +3,94 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Claude Chat</title>
+  <title>Claude — Constrained vs Free</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f5f5f5;
+      background: #f0f0f0;
       height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .chat-container {
-      width: 100%;
-      max-width: 720px;
-      height: 90vh;
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
 
-    .chat-header {
-      padding: 16px 20px;
+    .top-bar {
       background: #1a1a1a;
       color: #fff;
-      font-size: 16px;
+      padding: 14px 24px;
+      font-size: 15px;
       font-weight: 600;
-      letter-spacing: 0.3px;
+      flex-shrink: 0;
     }
 
-    .chat-messages {
+    .panels {
+      display: flex;
       flex: 1;
-      overflow-y: auto;
-      padding: 20px;
+      gap: 1px;
+      background: #ccc;
+      overflow: hidden;
+    }
+
+    .panel {
+      flex: 1;
+      background: #fff;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border-bottom: 1px solid #e8e8e8;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .panel-header.free { background: #fafafa; }
+    .panel-header.constrained { background: #f0f7ff; }
+
+    .panel-title { font-size: 14px; }
+
+    .panel-meta {
+      font-size: 11px;
+      color: #888;
+      font-weight: 400;
+      line-height: 1.5;
+    }
+
+    .panel-meta span {
+      display: inline-block;
+      background: #eee;
+      border-radius: 4px;
+      padding: 1px 6px;
+      margin: 1px 2px 1px 0;
+    }
+
+    .panel-header.constrained .panel-meta span {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
 
     .message {
-      max-width: 80%;
-      padding: 12px 16px;
-      border-radius: 12px;
-      line-height: 1.5;
-      font-size: 14px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.6;
       white-space: pre-wrap;
       word-break: break-word;
     }
@@ -60,14 +99,16 @@
       align-self: flex-end;
       background: #1a1a1a;
       color: #fff;
-      border-bottom-right-radius: 4px;
+      max-width: 75%;
+      border-bottom-right-radius: 3px;
     }
 
     .message.assistant {
       align-self: flex-start;
-      background: #f0f0f0;
-      color: #1a1a1a;
-      border-bottom-left-radius: 4px;
+      background: #f3f4f6;
+      color: #111;
+      max-width: 90%;
+      border-bottom-left-radius: 3px;
     }
 
     .message.assistant.streaming::after {
@@ -75,191 +116,192 @@
       animation: blink 0.7s step-end infinite;
     }
 
-    @keyframes blink {
-      50% { opacity: 0; }
-    }
+    @keyframes blink { 50% { opacity: 0; } }
 
-    .chat-input-area {
-      padding: 16px;
-      border-top: 1px solid #e8e8e8;
+    .input-area {
+      padding: 12px 16px;
+      border-top: 2px solid #ccc;
       display: flex;
-      gap: 10px;
+      gap: 8px;
       align-items: flex-end;
+      flex-shrink: 0;
+      background: #f5f5f5;
     }
 
     textarea {
       flex: 1;
-      padding: 10px 14px;
+      padding: 9px 13px;
       border: 1px solid #ddd;
       border-radius: 8px;
-      font-size: 14px;
+      font-size: 13px;
       font-family: inherit;
       resize: none;
       outline: none;
-      max-height: 120px;
+      max-height: 100px;
       line-height: 1.5;
-      transition: border-color 0.2s;
+      background: #fff;
     }
 
-    textarea:focus {
-      border-color: #1a1a1a;
-    }
+    textarea:focus { border-color: #1a1a1a; }
 
     button {
-      padding: 10px 20px;
+      padding: 9px 18px;
       background: #1a1a1a;
       color: #fff;
       border: none;
       border-radius: 8px;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
       cursor: pointer;
-      transition: opacity 0.2s;
       white-space: nowrap;
+      transition: opacity 0.2s;
     }
 
-    button:hover:not(:disabled) {
-      opacity: 0.8;
+    button:hover:not(:disabled) { opacity: 0.75; }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+      margin-left: 6px;
+      vertical-align: middle;
+      letter-spacing: 0.5px;
     }
 
-    button:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    .empty-state {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: #aaa;
-      gap: 8px;
-    }
-
-    .empty-state svg {
-      opacity: 0.3;
-    }
-
-    .empty-state p {
-      font-size: 14px;
-    }
+    .badge.free { background: #e5e7eb; color: #374151; }
+    .badge.constrained { background: #bfdbfe; color: #1e40af; }
   </style>
 </head>
 <body>
-  <div class="chat-container">
-    <div class="chat-header">Claude Chat</div>
+  <div class="top-bar">Claude — Response Control Comparison</div>
 
-    <div class="chat-messages" id="messages">
-      <div class="empty-state" id="emptyState">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
-        <p>Start a conversation with Claude</p>
+  <div class="panels">
+    <!-- FREE panel -->
+    <div class="panel">
+      <div class="panel-header free">
+        <div class="panel-title">Without constraints <span class="badge free">FREE</span></div>
+        <div class="panel-meta">
+          <span>max_tokens: 1024</span>
+          <span>no system prompt</span>
+          <span>no stop sequence</span>
+        </div>
       </div>
+      <div class="messages" id="freeMessages"></div>
     </div>
 
-    <div class="chat-input-area">
-      <textarea
-        id="userInput"
-        placeholder="Type a message..."
-        rows="1"
-        onInput="autoResize(this)"
-        onKeydown="handleKeydown(event)"
-      ></textarea>
-      <button id="sendBtn" onclick="sendMessage()">Send</button>
+    <!-- CONSTRAINED panel -->
+    <div class="panel">
+      <div class="panel-header constrained">
+        <div class="panel-title">With constraints <span class="badge constrained">CONTROLLED</span></div>
+        <div class="panel-meta">
+          <span>max_tokens: 200</span>
+          <span>format: SUMMARY / DETAILS</span>
+          <span>stop: "END"</span>
+        </div>
+      </div>
+      <div class="messages" id="constrainedMessages"></div>
     </div>
   </div>
 
+  <!-- Single shared input -->
+  <div class="input-area">
+    <textarea id="userInput" placeholder="Type a message — sent to both panels…" rows="1"
+      oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
+    <button id="sendBtn" onclick="sendBoth()">Send to both</button>
+  </div>
+
   <script>
-    const conversationHistory = [];
-    let isStreaming = false;
+    const history = { free: [], constrained: [] };
+    const streaming = { free: false, constrained: false };
 
     function autoResize(el) {
       el.style.height = "auto";
-      el.style.height = Math.min(el.scrollHeight, 120) + "px";
+      el.style.height = Math.min(el.scrollHeight, 100) + "px";
     }
 
-    function handleKeydown(e) {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
+    function handleKey(e) {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendBoth(); }
     }
 
-    function appendMessage(role, text = "") {
-      const emptyState = document.getElementById("emptyState");
-      if (emptyState) emptyState.remove();
-
-      const messages = document.getElementById("messages");
+    function appendMessage(panel, role, text = "") {
+      const container = document.getElementById(panel + "Messages");
       const div = document.createElement("div");
       div.className = `message ${role}`;
       div.textContent = text;
-      messages.appendChild(div);
-      messages.scrollTop = messages.scrollHeight;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
       return div;
     }
 
-    async function sendMessage() {
-      if (isStreaming) return;
+    async function streamPanel(panel, text) {
+      streaming[panel] = true;
+      history[panel].push({ role: "user", content: text });
 
-      const input = document.getElementById("userInput");
-      const text = input.value.trim();
-      if (!text) return;
-
-      input.value = "";
-      input.style.height = "auto";
-      document.getElementById("sendBtn").disabled = true;
-      isStreaming = true;
-
-      appendMessage("user", text);
-      conversationHistory.push({ role: "user", content: text });
-
-      const assistantDiv = appendMessage("assistant");
+      const assistantDiv = appendMessage(panel, "assistant");
       assistantDiv.classList.add("streaming");
       let responseText = "";
 
+      const endpoint = panel === "free" ? "/chat/free" : "/chat/constrained";
+
       try {
-        const response = await fetch("/chat", {
+        const res = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: conversationHistory }),
+          body: JSON.stringify({ messages: history[panel] }),
         });
 
-        const reader = response.body.getReader();
+        const reader = res.body.getReader();
         const decoder = new TextDecoder();
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-
-          const chunk = decoder.decode(value);
-          const lines = chunk.split("\n");
-
-          for (const line of lines) {
+          for (const line of decoder.decode(value).split("\n")) {
             if (!line.startsWith("data: ")) continue;
             const data = line.slice(6);
             if (data === "[DONE]") break;
-
             try {
-              const parsed = JSON.parse(data);
-              responseText += parsed.text;
+              responseText += JSON.parse(data).text;
               assistantDiv.textContent = responseText;
-              document.getElementById("messages").scrollTop =
-                document.getElementById("messages").scrollHeight;
+              document.getElementById(panel + "Messages").scrollTop = 9999;
             } catch {}
           }
         }
 
-        conversationHistory.push({ role: "assistant", content: responseText });
-      } catch (err) {
-        assistantDiv.textContent = "Error: Could not reach Claude. Make sure ANTHROPIC_API_KEY is set.";
+        history[panel].push({ role: "assistant", content: responseText });
+      } catch {
+        assistantDiv.textContent = "Error connecting to Claude.";
       } finally {
         assistantDiv.classList.remove("streaming");
-        isStreaming = false;
-        document.getElementById("sendBtn").disabled = false;
-        document.getElementById("userInput").focus();
+        streaming[panel] = false;
       }
+    }
+
+    async function sendBoth() {
+      if (streaming.free || streaming.constrained) return;
+
+      const input = document.getElementById("userInput");
+      const btn = document.getElementById("sendBtn");
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = "";
+      input.style.height = "auto";
+      btn.disabled = true;
+
+      appendMessage("free", "user", text);
+      appendMessage("constrained", "user", text);
+
+      await Promise.all([
+        streamPanel("free", text),
+        streamPanel("constrained", text),
+      ]);
+
+      btn.disabled = false;
+      input.focus();
     }
   </script>
 </body>
