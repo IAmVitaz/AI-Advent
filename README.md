@@ -4,7 +4,7 @@
 
 A simple Python web app with a split-panel chat interface that sends the same question to Claude twice — once with no constraints, once with explicit format, length limit, and stop sequence.
 
-![Demo](Day%202/Demo.gif)
+![Demo](Day%202/Demo.mp4)
 
 ### Running
 
