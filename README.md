@@ -1,5 +1,6 @@
 # AI Advent
 
+<a name="day-1"></a>
 <details>
 <summary><strong>Day 1 — Script to Anki Deck</strong></summary>
 <br>
@@ -14,6 +15,7 @@ A Python web app that converts scripts into Anki flashcard decks for spaced repe
 
 ---
 
+<a name="day-2"></a>
 <details open>
 <summary><strong>Day 2 — Response Control Comparison</strong></summary>
 <br>
