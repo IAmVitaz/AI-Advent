@@ -1,9 +1,19 @@
 # AI Advent
 
+## Table of Contents
+
+**Week 1**
+- [Day 1 — Script to Anki Deck](#day-1)
+- [Day 2 — Response Control Comparison](#day-2)
+- [Day 3 — Reasoning Mode Comparison](#day-3)
+- [Day 4 — Temperature Comparison](#day-4)
+- [Day 5 — Model Strength Comparison](#day-5)
+
+---
+
 <a name="day-1"></a>
-<details>
-<summary><strong>Day 1 — Script to Anki Deck</strong></summary>
-<br>
+
+[↑ Back to top](#ai-advent) &nbsp;·&nbsp; **Day 1 — Script to Anki Deck**
 
 A Python web app that converts scripts into Anki flashcard decks for spaced repetition learning.
 
@@ -11,27 +21,21 @@ A Python web app that converts scripts into Anki flashcard decks for spaced repe
 
 [GitHub →](https://github.com/IAmVitaz/ScriptToAnkiDeck)
 
-</details>
-
 ---
 
 <a name="day-2"></a>
-<details>
-<summary><strong>Day 2 — Response Control Comparison</strong></summary>
-<br>
+
+[↑ Back to top](#ai-advent) &nbsp;·&nbsp; **Day 2 — Response Control Comparison**
 
 A simple Python web app with a split-panel chat interface that sends the same question to Claude twice — once with no constraints, once with explicit format, length limit, and stop sequence.
 
 https://github.com/user-attachments/assets/549311e9-9428-47a9-8ea5-03430cdb5ad4
 
-</details>
-
 ---
 
 <a name="day-3"></a>
-<details>
-<summary><strong>Day 3 — Reasoning Mode Comparison</strong></summary>
-<br>
+
+[↑ Back to top](#ai-advent) &nbsp;·&nbsp; **Day 3 — Reasoning Mode Comparison**
 
 A Python web app that takes one problem and solves it four different ways simultaneously, comparing the results side by side in a 2×2 panel grid.
 
@@ -47,14 +51,11 @@ The test problem: *"I have a metal cup with the bottom missing and the top seale
 
 https://github.com/user-attachments/assets/a4392ef7-f0a0-45fb-bed6-e8fc80dabe7c
 
-</details>
-
 ---
 
 <a name="day-4"></a>
-<details>
-<summary><strong>Day 4 — Temperature Comparison</strong></summary>
-<br>
+
+[↑ Back to top](#ai-advent) &nbsp;·&nbsp; **Day 4 — Temperature Comparison**
 
 A Python web app that sends the same prompt to Claude 15 times simultaneously — 5 runs at each of three temperatures — and displays all results side by side so the effect of temperature is immediately visible.
 
@@ -79,14 +80,11 @@ At temperature 0 the model locked onto "dragon" with zero deviation across all 2
 
 https://github.com/user-attachments/assets/593d5c09-75ad-4986-baf0-d84cb36c472f
 
-</details>
-
 ---
 
 <a name="day-5"></a>
-<details open>
-<summary><strong>Day 5 — Model Strength Comparison</strong></summary>
-<br>
+
+[↑ Back to top](#ai-advent) &nbsp;·&nbsp; **Day 5 — Model Strength Comparison**
 
 A Python web app that sends the same prompt to three Claude models simultaneously — Haiku (weak), Sonnet (medium), and Opus (strong) — and displays each response side by side along with measured metrics: response time, token count, and estimated cost.
 
@@ -112,5 +110,3 @@ A Python web app that sends the same prompt to three Claude models simultaneousl
 - For factual explanation tasks at this complexity level, Haiku delivers comparable accuracy at a fraction of the cost and latency
 
 https://github.com/user-attachments/assets/8b2e0cc5-b7af-45c1-838c-5cd3bcc0a8c6
-
-</details>
