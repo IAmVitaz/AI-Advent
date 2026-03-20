@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude — Model Comparison</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f0f0f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .top-bar {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .prompt-bar {
+      background: #fff;
+      border-bottom: 2px solid #ccc;
+      padding: 12px 16px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      flex-shrink: 0;
+    }
+
+    .prompt-bar textarea {
+      flex: 1;
+      padding: 9px 13px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      line-height: 1.5;
+      background: #fafafa;
+      min-height: 56px;
+      max-height: 120px;
+    }
+
+    .prompt-bar textarea:focus { border-color: #1a1a1a; background: #fff; }
+
+    .prompt-bar button {
+      padding: 9px 22px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s;
+      align-self: flex-end;
+    }
+
+    .prompt-bar button:hover:not(:disabled) { opacity: 0.75; }
+    .prompt-bar button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      flex: 1;
+      gap: 1px;
+      background: #ccc;
+      overflow: hidden;
+    }
+
+    .column {
+      background: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .column-header {
+      padding: 11px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      border-bottom: 2px solid #ccc;
+      flex-shrink: 0;
+    }
+
+    .column-header.weak   { background: #dcfce7; }
+    .column-header.medium { background: #ede9fe; }
+    .column-header.strong { background: #fee2e2; }
+
+    .col-title { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 20px;
+      letter-spacing: 0.4px;
+    }
+
+    .badge.weak   { background: #bbf7d0; color: #14532d; }
+    .badge.medium { background: #ddd6fe; color: #5b21b6; }
+    .badge.strong { background: #fecaca; color: #991b1b; }
+
+    .col-model { font-size: 11px; color: #555; font-weight: 400; }
+    .col-price { font-size: 10px; color: #888; margin-top: 2px; }
+
+    .output-wrap {
+      flex: 1;
+      overflow-y: auto;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .output {
+      flex: 1;
+      padding: 12px 14px;
+      font-size: 13px;
+      line-height: 1.65;
+      color: #111;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-y: auto;
+    }
+
+    .output.streaming::after {
+      content: "▋";
+      animation: blink 0.7s step-end infinite;
+    }
+
+    .placeholder { color: #ccc; font-style: italic; }
+
+    .metrics {
+      border-top: 1px solid #eee;
+      padding: 8px 14px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 12px;
+      font-size: 11px;
+      background: #fafafa;
+      flex-shrink: 0;
+    }
+
+    .metric-row { display: flex; justify-content: space-between; color: #555; }
+    .metric-row .label { color: #888; }
+    .metric-row .value { font-weight: 600; color: #111; }
+    .metric-row .value.cost { color: #b45309; }
+
+    .metric-placeholder {
+      color: #ccc;
+      font-size: 11px;
+      font-style: italic;
+      padding: 6px 14px;
+      background: #fafafa;
+      border-top: 1px solid #eee;
+      flex-shrink: 0;
+    }
+
+    @keyframes blink { 50% { opacity: 0; } }
+  </style>
+</head>
+<body>
+  <div class="top-bar">Claude — Model Strength Comparison</div>
+
+  <div class="prompt-bar">
+    <textarea id="promptInput" rows="2" oninput="autoResize(this)">{{ default_prompt }}</textarea>
+    <button id="runBtn" onclick="runAll()">Compare models</button>
+  </div>
+
+  <div class="columns">
+    {% set tiers = [('weak', 'Weak'), ('medium', 'Medium'), ('strong', 'Strong')] %}
+    {% for key, tier in tiers %}
+    {% set m = models[key] %}
+    <div class="column">
+      <div class="column-header {{ key }}">
+        <div class="col-title">
+          <span class="badge {{ key }}">{{ tier }}</span>
+          <span>{{ m.label }}</span>
+        </div>
+        <div class="col-price">In: ${{ "%.2f"|format(m.price_in) }}/MTok &nbsp;·&nbsp; Out: ${{ "%.2f"|format(m.price_out) }}/MTok</div>
+      </div>
+      <div class="output-wrap">
+        <div class="output" id="out-{{ key }}">
+          <span class="placeholder">Waiting for prompt…</span>
+        </div>
+        <div class="metric-placeholder" id="metrics-{{ key }}">Metrics will appear after response</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <script>
+    const MODELS = ["weak", "medium", "strong"];
+    let running = 0;
+
+    function autoResize(el) {
+      el.style.height = "auto";
+      el.style.height = Math.min(el.scrollHeight, 120) + "px";
+    }
+
+    function setMetrics(key, data) {
+      const el = document.getElementById("metrics-" + key);
+      const costStr = data.cost < 0.0001
+        ? "< $0.0001"
+        : "$" + data.cost.toFixed(6);
+
+      el.outerHTML = `<div class="metrics" id="metrics-${key}">
+        <div class="metric-row"><span class="label">Time</span><span class="value">${data.time}s</span></div>
+        <div class="metric-row"><span class="label">Input tokens</span><span class="value">${data.input_tokens.toLocaleString()}</span></div>
+        <div class="metric-row"><span class="label">Output tokens</span><span class="value">${data.output_tokens.toLocaleString()}</span></div>
+        <div class="metric-row"><span class="label">Est. cost</span><span class="value cost">${costStr}</span></div>
+      </div>`;
+    }
+
+    async function streamModel(key, prompt) {
+      const out = document.getElementById("out-" + key);
+      out.textContent = "";
+      out.classList.add("streaming");
+
+      try {
+        const res = await fetch("/generate/" + key, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+        });
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop();
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const evt = JSON.parse(line.slice(6));
+              if (evt.type === "text") {
+                out.textContent += evt.text;
+                out.scrollTop = out.scrollHeight;
+              } else if (evt.type === "done") {
+                setMetrics(key, evt);
+              }
+            } catch {}
+          }
+        }
+      } catch {
+        out.textContent = "Error connecting to server.";
+      } finally {
+        out.classList.remove("streaming");
+        running--;
+        if (running === 0) {
+          document.getElementById("runBtn").disabled = false;
+          document.getElementById("promptInput").disabled = false;
+        }
+      }
+    }
+
+    function runAll() {
+      const prompt = document.getElementById("promptInput").value.trim();
+      if (!prompt) return;
+
+      document.getElementById("runBtn").disabled = true;
+      document.getElementById("promptInput").disabled = true;
+      running = MODELS.length;
+
+      for (const key of MODELS) {
+        const mp = document.getElementById("metrics-" + key);
+        if (mp) mp.outerHTML = `<div class="metric-placeholder" id="metrics-${key}">Waiting…</div>`;
+        streamModel(key, prompt);
+      }
+    }
+
+    autoResize(document.getElementById("promptInput"));
+  </script>
+</body>
+</html>

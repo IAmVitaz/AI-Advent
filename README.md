@@ -52,7 +52,7 @@ https://github.com/user-attachments/assets/a4392ef7-f0a0-45fb-bed6-e8fc80dabe7c
 ---
 
 <a name="day-4"></a>
-<details open>
+<details>
 <summary><strong>Day 4 — Temperature Comparison</strong></summary>
 <br>
 
@@ -78,5 +78,39 @@ A Python web app that sends the same prompt to Claude 15 times simultaneously �
 At temperature 0 the model locked onto "dragon" with zero deviation across all 25 runs. Temperature 0.5 broke out once. Temperature 1.0 escaped 10 times — producing words like "wizard", "princess", "witch", and others. The 5-runs-per-column layout turned an abstract concept into a concrete, countable experiment.
 
 https://github.com/user-attachments/assets/593d5c09-75ad-4986-baf0-d84cb36c472f
+
+</details>
+
+---
+
+<a name="day-5"></a>
+<details open>
+<summary><strong>Day 5 — Model Strength Comparison</strong></summary>
+<br>
+
+A Python web app that sends the same prompt to three Claude models simultaneously — Haiku (weak), Sonnet (medium), and Opus (strong) — and displays each response side by side along with measured metrics: response time, token count, and estimated cost.
+
+**The three models:**
+- **Claude Haiku 4.5** — fast and cheap. In: $1.00/MTok · Out: $5.00/MTok
+- **Claude Sonnet 4.6** — balanced. In: $3.00/MTok · Out: $15.00/MTok
+- **Claude Opus 4.6** — most capable. In: $5.00/MTok · Out: $25.00/MTok
+
+**Prompt used:** *"Explain the concept of black holes in simple terms. Include how they form, what happens at the event horizon, and one surprising fact."*
+
+**Results:**
+
+| Model | Time | Input tokens | Output tokens | Est. cost |
+|-------|------|-------------|---------------|-----------|
+| Haiku 4.5 | 8.19s | 35 | 267 | $0.001370 |
+| Sonnet 4.6 | 15.08s | 35 | 357 | $0.005460 |
+| Opus 4.6 | 15.06s | 35 | 332 | $0.008475 |
+
+**Key observations:**
+- Haiku finished nearly **2× faster** than Sonnet and Opus, and cost **6× less** than Opus
+- All three models grasped the topic correctly — quality differences were stylistic, not factual
+- Haiku used bullet points and short paragraphs; Sonnet structured numbered steps with bold emphasis; Opus wrote in flowing prose with richer analogies
+- For factual explanation tasks at this complexity level, Haiku delivers comparable accuracy at a fraction of the cost and latency
+
+https://github.com/user-attachments/assets/8b2e0cc5-b7af-45c1-838c-5cd3bcc0a8c6
 
 </details>
