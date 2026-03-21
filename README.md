@@ -13,7 +13,9 @@
 
 <a name="day-1"></a>
 
-[↑ Back to top](#ai-advent) &nbsp;·&nbsp; **Day 1 — Script to Anki Deck**
+## Day 1 — Script to Anki Deck
+
+[↑ Back to top](#ai-advent)
 
 A Python web app that converts scripts into Anki flashcard decks for spaced repetition learning.
 
@@ -25,7 +27,9 @@ A Python web app that converts scripts into Anki flashcard decks for spaced repe
 
 <a name="day-2"></a>
 
-[↑ Back to top](#ai-advent) &nbsp;·&nbsp; **Day 2 — Response Control Comparison**
+## Day 2 — Response Control Comparison
+
+[↑ Back to top](#ai-advent)
 
 A simple Python web app with a split-panel chat interface that sends the same question to Claude twice — once with no constraints, once with explicit format, length limit, and stop sequence.
 
@@ -35,7 +39,9 @@ https://github.com/user-attachments/assets/549311e9-9428-47a9-8ea5-03430cdb5ad4
 
 <a name="day-3"></a>
 
-[↑ Back to top](#ai-advent) &nbsp;·&nbsp; **Day 3 — Reasoning Mode Comparison**
+## Day 3 — Reasoning Mode Comparison
+
+[↑ Back to top](#ai-advent)
 
 A Python web app that takes one problem and solves it four different ways simultaneously, comparing the results side by side in a 2×2 panel grid.
 
@@ -55,7 +61,9 @@ https://github.com/user-attachments/assets/a4392ef7-f0a0-45fb-bed6-e8fc80dabe7c
 
 <a name="day-4"></a>
 
-[↑ Back to top](#ai-advent) &nbsp;·&nbsp; **Day 4 — Temperature Comparison**
+## Day 4 — Temperature Comparison
+
+[↑ Back to top](#ai-advent)
 
 A Python web app that sends the same prompt to Claude 15 times simultaneously — 5 runs at each of three temperatures — and displays all results side by side so the effect of temperature is immediately visible.
 
@@ -84,7 +92,9 @@ https://github.com/user-attachments/assets/593d5c09-75ad-4986-baf0-d84cb36c472f
 
 <a name="day-5"></a>
 
-[↑ Back to top](#ai-advent) &nbsp;·&nbsp; **Day 5 — Model Strength Comparison**
+## Day 5 — Model Strength Comparison
+
+[↑ Back to top](#ai-advent)
 
 A Python web app that sends the same prompt to three Claude models simultaneously — Haiku (weak), Sonnet (medium), and Opus (strong) — and displays each response side by side along with measured metrics: response time, token count, and estimated cost.
 
