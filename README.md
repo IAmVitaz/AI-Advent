@@ -11,6 +11,7 @@
 
 **Week 2**
 - [Day 6 — First Agent](#day-6)
+- [Day 7 — Persistent Agent](#day-7)
 
 ---
 
@@ -142,3 +143,28 @@ A Python web app implementing a simple stateful chat agent. Unlike previous days
 **Metrics shown after every message:** input tokens · output tokens · response time · memory (JSON size of full conversation history in KB)
 
 https://github.com/user-attachments/assets/0d45c3c8-995a-4aa9-8bb7-4bd209f2f3ac
+
+---
+
+<a name="day-7"></a>
+
+## Day 7 — Persistent Agent
+
+[↑ Back to top](#ai-advent)
+
+Extends the Day 6 agent with persistent conversation history. The agent saves the full message history to `history.json` after every reply and reloads it on startup — so a restart is invisible to the conversation.
+
+**What changed from Day 6:**
+- `Agent` writes history to disk after every assistant turn and loads it back on `__init__`
+- `reset()` deletes the file alongside clearing memory
+- New `GET /history` endpoint lets the frontend restore the chat UI on page load
+- On browser open/refresh, all previous messages are re-rendered from saved history
+
+**How persistence works:**
+1. User sends a message → agent appends to `self.history`, streams reply, saves `history.json`
+2. Server restarts → `Agent.__init__` reads `history.json`, history is fully restored
+3. Next message is sent with the complete prior context — the model has no idea there was a restart
+
+**Key insight:** the LLM itself is stateless — it has no memory between calls. "Persistence" is entirely about what you pass in `messages`. Saving and replaying that list is all it takes to make the agent feel continuous.
+
+https://github.com/user-attachments/assets/afcb4fb9-c771-43af-afea-e179252a455e
