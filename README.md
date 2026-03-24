@@ -9,6 +9,9 @@
 - [Day 4 — Temperature Comparison](#day-4)
 - [Day 5 — Model Strength Comparison](#day-5)
 
+**Week 2**
+- [Day 6 — First Agent](#day-6)
+
 ---
 
 <a name="day-1"></a>
@@ -120,3 +123,22 @@ A Python web app that sends the same prompt to three Claude models simultaneousl
 - For factual explanation tasks at this complexity level, Haiku delivers comparable accuracy at a fraction of the cost and latency
 
 https://github.com/user-attachments/assets/8b2e0cc5-b7af-45c1-838c-5cd3bcc0a8c6
+
+---
+
+<a name="day-6"></a>
+
+## Day 6 — First Agent
+
+[↑ Back to top](#ai-advent)
+
+A Python web app implementing a simple stateful chat agent. Unlike previous days where each route made a raw API call, here the LLM interaction is fully encapsulated in an `Agent` class — it owns the conversation history, system prompt, and streaming logic. Flask acts as a thin HTTP adapter on top.
+
+**Architecture:**
+- `agent.py` — the agent entity: holds history, calls the API, yields streamed chunks and final stats. No Flask dependency — usable from CLI or any other context.
+- `app.py` — three routes: serve UI, proxy chat through the agent, reset history.
+- Chat UI with user/assistant bubbles, real-time streaming, and a metrics row after each response.
+
+**Metrics shown after every message:** input tokens · output tokens · response time · memory (JSON size of full conversation history in KB)
+
+https://github.com/user-attachments/assets/0d45c3c8-995a-4aa9-8bb7-4bd209f2f3ac
