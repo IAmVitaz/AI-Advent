@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp -r \"/Users/vit_az/Documents/IT-Projects/AI Advent/Day 7\" \"/Users/vit_az/Documents/IT-Projects/AI Advent/Day 8\")",
+      "Bash(rm -rf \"/Users/vit_az/Documents/IT-Projects/AI Advent/Day 8/__pycache__\")"
+    ]
+  }
+}

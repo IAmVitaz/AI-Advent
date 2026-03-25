@@ -12,6 +12,7 @@
 **Week 2**
 - [Day 6 — First Agent](#day-6)
 - [Day 7 — Persistent Agent](#day-7)
+- [Day 8 — Token Inspector](#day-8)
 
 ---
 
@@ -168,3 +169,30 @@ Extends the Day 6 agent with persistent conversation history. The agent saves th
 **Key insight:** the LLM itself is stateless — it has no memory between calls. "Persistence" is entirely about what you pass in `messages`. Saving and replaying that list is all it takes to make the agent feel continuous.
 
 https://github.com/user-attachments/assets/afcb4fb9-c771-43af-afea-e179252a455e
+
+---
+
+<a name="day-8"></a>
+
+## Day 8 — Token Inspector
+
+[↑ Back to top](#ai-advent)
+
+Extends the Day 7 agent with real-time token tracking and a live context budget dashboard.
+
+Every response shows: pre-call token count (via `messages.count_tokens()`), input tokens confirmed by the API, output tokens, and context usage %. A per-turn table in the sidebar lets you watch the input grow as history accumulates.
+
+**`max_tokens` controls output only.** It caps the length of the model's response — if the answer would be longer, it gets cut off. It has no effect on what you send in. Set to `100` in this project to make truncation visible.
+
+**Context cannot be restricted in the API.** The model receives whatever you put in `messages` — there is no `max_input_tokens` parameter. Managing context growth is the developer's job. As history accumulates, input tokens grow every turn because the full conversation is resent each time. Common strategies: truncation, summarization, sliding window, or counting tokens before each call and trimming as needed. If the real model limit is exceeded, the API returns a `400 BadRequestError`.
+
+A configurable demo limit (default 1,500 tokens) makes the overflow threshold easy to hit so the behavior is observable without sending hundreds of thousands of tokens.
+
+**Context window limits:**
+| Model | Context window |
+|---|---|
+| claude-haiku-4-5 | 200,000 tokens |
+| claude-sonnet-4-6 | 1,000,000 tokens |
+| claude-opus-4-6 | 1,000,000 tokens |
+
+https://github.com/user-attachments/assets/26d08bee-b99d-4dda-9e2d-9f2006bb8414
