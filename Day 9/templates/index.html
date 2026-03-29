@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude — History Compression</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f0f0f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ── */
+    .top-bar {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .top-bar-title { flex: 1; }
+
+    .top-bar-btn {
+      padding: 5px 12px;
+      background: #fff;
+      color: #1a1a1a;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .top-bar-btn:hover { opacity: 0.75; }
+
+    /* ── Toggle switch ── */
+    .toggle-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 400;
+      color: #ccc;
+    }
+
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+    }
+
+    .toggle input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      background: #555;
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .slider::before {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+
+    .toggle input:checked + .slider { background: #22c55e; }
+    .toggle input:checked + .slider::before { transform: translateX(20px); }
+
+    .compression-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 20px;
+      background: #22c55e;
+      color: #fff;
+      letter-spacing: 0.4px;
+      transition: background 0.2s;
+    }
+    .compression-badge.off { background: #6b7280; }
+
+    /* ── Main layout ── */
+    .main {
+      flex: 1;
+      display: flex;
+      gap: 10px;
+      padding: 10px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* ── Chat column ── */
+    .chat-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .panel-header {
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      border-bottom: 1px solid #e8e8e8;
+      background: #f0f7ff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .panel-header .tags {
+      margin-left: auto;
+      display: flex;
+      gap: 5px;
+    }
+
+    .tag {
+      font-size: 10px;
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-weight: 600;
+    }
+    .tag.green { background: #dcfce7; color: #166534; }
+
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .message {
+      padding: 9px 13px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: #1a1a1a;
+      color: #fff;
+      max-width: 75%;
+      border-bottom-right-radius: 3px;
+      margin-top: 8px;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+      background: #f3f4f6;
+      color: #111;
+      max-width: 85%;
+      border-bottom-left-radius: 3px;
+    }
+
+    .message.assistant.streaming::after {
+      content: "▋";
+      animation: blink 0.7s step-end infinite;
+    }
+
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ── Compression event pill ── */
+    .compression-event {
+      align-self: center;
+      background: #fef9c3;
+      border: 1px solid #fde68a;
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: 11px;
+      color: #92400e;
+      font-weight: 600;
+      margin: 6px 0;
+    }
+
+    /* ── Per-response metrics strip ── */
+    .metrics {
+      align-self: flex-start;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 3px 2px 4px;
+    }
+
+    .metric {
+      font-size: 10px;
+      color: #999;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .metric span {
+      display: inline-block;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+    }
+
+    .metric span.tok-in    { background: #dbeafe; color: #1e40af; }
+    .metric span.tok-out   { background: #dcfce7; color: #166534; }
+    .metric span.tok-full  { background: #fee2e2; color: #991b1b; }
+    .metric span.tok-save  { background: #d1fae5; color: #065f46; }
+    .metric span.tok-time  { background: #f3e8ff; color: #6b21a8; }
+    .metric span.tok-badge { background: #fef9c3; color: #92400e; }
+
+    /* ── Empty state ── */
+    #empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #aaa;
+      pointer-events: none;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    #empty-state .icon { font-size: 32px; }
+
+    /* ── Input bar ── */
+    .input-area {
+      padding: 10px 14px;
+      border-top: 2px solid #ccc;
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      flex-shrink: 0;
+      background: #f5f5f5;
+    }
+
+    textarea {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      max-height: 100px;
+      line-height: 1.5;
+      background: #fff;
+    }
+
+    textarea:focus { border-color: #1a1a1a; }
+
+    #send-btn {
+      padding: 8px 18px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    #send-btn:hover:not(:disabled) { opacity: 0.75; }
+    #send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── Stats column ── */
+    .stats-column {
+      width: 320px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+    }
+
+    .stats-card {
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .stats-card-header {
+      padding: 9px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+      color: #374151;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .stats-card-body {
+      padding: 12px 14px;
+    }
+
+    /* ── Settings row ── */
+    .settings-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .settings-row label {
+      font-size: 11px;
+      color: #6b7280;
+      white-space: nowrap;
+    }
+
+    .settings-row input[type="number"] {
+      width: 60px;
+      padding: 4px 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    .apply-btn {
+      padding: 4px 10px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .apply-btn:hover { opacity: 0.75; }
+
+    /* ── Comparison bars ── */
+    .cmp-row {
+      margin-bottom: 10px;
+    }
+
+    .cmp-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+
+    .cmp-label strong { color: #111; font-variant-numeric: tabular-nums; }
+
+    .cmp-track {
+      height: 10px;
+      border-radius: 5px;
+      background: #e5e7eb;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .cmp-fill {
+      height: 100%;
+      border-radius: 5px;
+      transition: width 0.4s ease;
+    }
+
+    .cmp-fill.blue  { background: #3b82f6; }
+    .cmp-fill.red   { background: #ef4444; }
+    .cmp-fill.green { background: #22c55e; }
+
+    .savings-note {
+      font-size: 11px;
+      color: #065f46;
+      background: #d1fae5;
+      border-radius: 6px;
+      padding: 6px 10px;
+      margin-top: 6px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .savings-note.zero { background: #f3f4f6; color: #9ca3af; }
+
+    /* ── Summary box ── */
+    .summary-content {
+      font-size: 11px;
+      color: #374151;
+      line-height: 1.6;
+      max-height: 120px;
+      overflow-y: auto;
+      background: #f9fafb;
+      border-radius: 6px;
+      padding: 8px 10px;
+      border: 1px solid #e5e7eb;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .summary-empty {
+      font-size: 11px;
+      color: #d1d5db;
+      text-align: center;
+      padding: 10px 0;
+    }
+
+    .summary-meta {
+      font-size: 10px;
+      color: #9ca3af;
+      margin-bottom: 6px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .summary-meta span {
+      background: #f3f4f6;
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+
+    /* ── Summary grid ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .summary-cell {
+      background: #f9fafb;
+      border-radius: 7px;
+      padding: 8px 10px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .summary-cell .sc-label {
+      font-size: 10px;
+      color: #9ca3af;
+      margin-bottom: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .summary-cell .sc-value {
+      font-size: 15px;
+      font-weight: 700;
+      color: #111;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .summary-cell .sc-value.blue  { color: #1d4ed8; }
+    .summary-cell .sc-value.green { color: #166534; }
+    .summary-cell .sc-value.red   { color: #b91c1c; }
+    .summary-cell .sc-value.emerald { color: #065f46; }
+
+    /* ── Turn table ── */
+    .turn-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    .turn-table th {
+      text-align: left;
+      padding: 5px 6px;
+      color: #9ca3af;
+      font-weight: 600;
+      border-bottom: 1px solid #e5e7eb;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      font-size: 10px;
+    }
+
+    .turn-table td {
+      padding: 5px 6px;
+      color: #374151;
+      border-bottom: 1px solid #f3f4f6;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .turn-table tr:last-child td { border-bottom: none; }
+    .turn-table tr.latest td { background: #eff6ff; }
+    .turn-table tr.compressed-turn td { background: #fefce8; }
+
+    .turn-table .td-sent  { color: #1d4ed8; font-weight: 600; }
+    .turn-table .td-full  { color: #b91c1c; }
+    .turn-table .td-save  { color: #065f46; font-weight: 600; }
+    .turn-table .td-compress { font-size: 10px; }
+
+    #no-turns {
+      text-align: center;
+      color: #d1d5db;
+      font-size: 12px;
+      padding: 16px 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Top bar ── -->
+<div class="top-bar">
+  <div class="top-bar-title">Claude — History Compression</div>
+
+  <div class="toggle-wrap">
+    Compression
+    <label class="toggle">
+      <input type="checkbox" id="compression-toggle" checked />
+      <span class="slider"></span>
+    </label>
+  </div>
+  <span class="compression-badge" id="comp-badge">ON</span>
+
+  <button class="top-bar-btn" id="new-chat-btn">+ New chat</button>
+</div>
+
+<!-- ── Main layout ── -->
+<div class="main">
+
+  <!-- Chat column -->
+  <div class="chat-column">
+    <div class="panel-header">
+      Multi-turn agent
+      <div class="tags">
+        <span class="tag">claude-haiku-4-5</span>
+        <span class="tag">streaming</span>
+        <span class="tag green" id="mode-tag">compression: ON</span>
+      </div>
+    </div>
+
+    <div id="chat">
+      <div id="empty-state">
+        <div class="icon">🗜️</div>
+        <p>Send a message to start chatting.</p>
+        <p style="font-size:11px; margin-top:4px;">
+          After <strong>10 messages</strong> the older history will be summarized to save tokens.
+        </p>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <textarea id="user-input" placeholder="Message the agent…" rows="1"
+        oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
+      <button id="send-btn">Send</button>
+    </div>
+  </div>
+
+  <!-- Stats column -->
+  <div class="stats-column">
+
+    <!-- Compression settings -->
+    <div class="stats-card">
+      <div class="stats-card-header">Compression Settings</div>
+      <div class="stats-card-body">
+        <div class="settings-row">
+          <label>Keep last N messages:</label>
+          <input type="number" id="keep-last-n" value="6" min="2" max="50" />
+          <button class="apply-btn" id="apply-settings-btn">Apply</button>
+        </div>
+        <div class="settings-row">
+          <label>Compress every N messages:</label>
+          <input type="number" id="compress-every" value="10" min="2" max="50" />
+        </div>
+        <div style="font-size:10px; color:#9ca3af; margin-top:4px; line-height:1.5;">
+          When total messages − last N ≥ threshold, older messages are summarized into a single context block.
+        </div>
+      </div>
+    </div>
+
+    <!-- Token savings comparison -->
+    <div class="stats-card">
+      <div class="stats-card-header">Token Comparison</div>
+      <div class="stats-card-body">
+        <div class="cmp-row">
+          <div class="cmp-label">
+            <span>Sent (compressed)</span>
+            <strong id="cmp-sent">—</strong>
+          </div>
+          <div class="cmp-track">
+            <div class="cmp-fill blue" id="bar-sent" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="cmp-row">
+          <div class="cmp-label">
+            <span>Would be (full history)</span>
+            <strong id="cmp-full">—</strong>
+          </div>
+          <div class="cmp-track">
+            <div class="cmp-fill red" id="bar-full" style="width:100%"></div>
+          </div>
+        </div>
+        <div class="savings-note zero" id="savings-note">No savings yet</div>
+      </div>
+    </div>
+
+    <!-- Session totals -->
+    <div class="stats-card">
+      <div class="stats-card-header">Session Totals</div>
+      <div class="stats-card-body">
+        <div class="summary-grid">
+          <div class="summary-cell">
+            <div class="sc-label">Turns</div>
+            <div class="sc-value" id="sum-turns">0</div>
+          </div>
+          <div class="summary-cell">
+            <div class="sc-label">Compressed</div>
+            <div class="sc-value" id="sum-compressed">0 msgs</div>
+          </div>
+          <div class="summary-cell">
+            <div class="sc-label">Total sent tok</div>
+            <div class="sc-value blue" id="sum-sent">0</div>
+          </div>
+          <div class="summary-cell">
+            <div class="sc-label">Total saved tok</div>
+            <div class="sc-value emerald" id="sum-saved">0</div>
+          </div>
+        </div>
+        <div class="savings-note zero" id="total-savings-note">0% savings across session</div>
+      </div>
+    </div>
+
+    <!-- Current summary -->
+    <div class="stats-card">
+      <div class="stats-card-header">
+        Current Summary
+        <span id="summary-age" style="font-size:10px; font-weight:400; color:#9ca3af;"></span>
+      </div>
+      <div class="stats-card-body">
+        <div class="summary-meta" id="summary-meta" style="display:none">
+          <span id="meta-compressed"></span>
+          <span id="meta-total"></span>
+        </div>
+        <div class="summary-content" id="summary-content" style="display:none"></div>
+        <div class="summary-empty" id="summary-empty">No summary yet — keep chatting!</div>
+      </div>
+    </div>
+
+    <!-- Per-turn breakdown -->
+    <div class="stats-card" style="flex:1; min-height: 160px; display:flex; flex-direction:column;">
+      <div class="stats-card-header">Per-turn Breakdown</div>
+      <div class="stats-card-body" style="overflow-y:auto; flex:1; padding:0;">
+        <table class="turn-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th title="Tokens actually sent (compressed)">Sent</th>
+              <th title="Tokens that full history would cost">Full</th>
+              <th title="Tokens saved this turn">Saved</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="turn-tbody">
+            <tr><td colspan="5" id="no-turns">No turns yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const chatEl       = document.getElementById('chat');
+  const inputEl      = document.getElementById('user-input');
+  const sendBtn      = document.getElementById('send-btn');
+  const emptyState   = document.getElementById('empty-state');
+  const compToggle   = document.getElementById('compression-toggle');
+  const compBadge    = document.getElementById('comp-badge');
+  const modeTag      = document.getElementById('mode-tag');
+
+  // Stats elements
+  const cmpSent      = document.getElementById('cmp-sent');
+  const cmpFull      = document.getElementById('cmp-full');
+  const barSent      = document.getElementById('bar-sent');
+  const barFull      = document.getElementById('bar-full');
+  const savingsNote  = document.getElementById('savings-note');
+  const sumTurns     = document.getElementById('sum-turns');
+  const sumCompressed= document.getElementById('sum-compressed');
+  const sumSent      = document.getElementById('sum-sent');
+  const sumSaved     = document.getElementById('sum-saved');
+  const totalSavingsNote = document.getElementById('total-savings-note');
+  const summaryContent   = document.getElementById('summary-content');
+  const summaryEmpty     = document.getElementById('summary-empty');
+  const summaryMeta      = document.getElementById('summary-meta');
+  const summaryAge       = document.getElementById('summary-age');
+  const metaCompressed   = document.getElementById('meta-compressed');
+  const metaTotal        = document.getElementById('meta-total');
+  const turnTbody        = document.getElementById('turn-tbody');
+
+  let streaming = false;
+  let sessionTotalSent = 0;
+  let sessionTotalSaved = 0;
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+
+  document.getElementById('new-chat-btn').addEventListener('click', newConversation);
+  document.getElementById('apply-settings-btn').addEventListener('click', applySettings);
+  compToggle.addEventListener('change', toggleCompression);
+  sendBtn.addEventListener('click', send);
+  restoreStats();
+
+  // ── Stats restore ─────────────────────────────────────────────────────────
+
+  async function restoreStats() {
+    const resp = await fetch('/stats');
+    const data = await resp.json();
+    applyStats(data);
+    compToggle.checked = data.compression_enabled;
+    document.getElementById('keep-last-n').value = data.keep_last_n;
+    document.getElementById('compress-every').value = data.compress_every;
+    updateCompBadge(data.compression_enabled);
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  function fmt(n) { return typeof n === 'number' ? n.toLocaleString() : '—'; }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  }
+
+  function scrollToBottom() { chatEl.scrollTop = chatEl.scrollHeight; }
+
+  function addMessage(role, text = '') {
+    emptyState.style.display = 'none';
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+    div.textContent = text;
+    chatEl.appendChild(div);
+    scrollToBottom();
+    return div;
+  }
+
+  function addCompressionEvent() {
+    const pill = document.createElement('div');
+    pill.className = 'compression-event';
+    pill.textContent = '⚡ History compressed — summary generated';
+    chatEl.appendChild(pill);
+    scrollToBottom();
+  }
+
+  function addMetricsRow(stat) {
+    const row = document.createElement('div');
+    row.classList.add('metrics');
+    const savingsEl = stat.savings > 0
+      ? `<div class="metric">saved <span class="tok-save">+${fmt(stat.savings)} tok (${stat.savings_pct}%)</span></div>`
+      : '';
+    const compressEl = stat.compressed_this_turn
+      ? `<div class="metric"><span class="tok-badge">compressed</span></div>` : '';
+    row.innerHTML = `
+      <div class="metric">sent <span class="tok-in">${fmt(stat.input_tokens)} tok</span></div>
+      <div class="metric">out <span class="tok-out">${fmt(stat.output_tokens)} tok</span></div>
+      ${stat.compression_enabled && stat.savings > 0
+        ? `<div class="metric">full would be <span class="tok-full">${fmt(stat.full_tokens)}</span></div>` : ''}
+      ${savingsEl}
+      ${compressEl}
+      <div class="metric">time <span class="tok-time">${stat.time}s</span></div>
+    `;
+    chatEl.appendChild(row);
+    scrollToBottom();
+  }
+
+  // ── Comparison bars ───────────────────────────────────────────────────────
+
+  function updateComparisonBars(sent, full) {
+    cmpSent.textContent = fmt(sent) + ' tok';
+    cmpFull.textContent = fmt(full) + ' tok';
+
+    // Both bars relative to full (full = 100%)
+    barFull.style.width = '100%';
+    const sentPct = full > 0 ? Math.round(sent / full * 100) : 100;
+    barSent.style.width = sentPct + '%';
+
+    const savings = full - sent;
+    const pct = full > 0 ? Math.round(savings / full * 100) : 0;
+
+    if (savings > 0) {
+      savingsNote.className = 'savings-note';
+      savingsNote.textContent = `Saved ${fmt(savings)} tokens this turn (${pct}% reduction)`;
+    } else {
+      savingsNote.className = 'savings-note zero';
+      savingsNote.textContent = 'No compression savings yet';
+    }
+  }
+
+  // ── Summary panel ─────────────────────────────────────────────────────────
+
+  function updateSummary(data) {
+    if (data.summary) {
+      summaryContent.style.display = 'block';
+      summaryEmpty.style.display   = 'none';
+      summaryMeta.style.display    = 'flex';
+      summaryContent.textContent   = data.summary;
+      metaCompressed.textContent   = `${data.compressed_count} msgs summarized`;
+      metaTotal.textContent        = `${data.total_messages} total`;
+      summaryAge.textContent       = `(${data.context_messages} ctx msgs sent)`;
+    } else {
+      summaryContent.style.display = 'none';
+      summaryEmpty.style.display   = 'block';
+      summaryMeta.style.display    = 'none';
+      summaryAge.textContent       = '';
+    }
+  }
+
+  // ── Session stats ─────────────────────────────────────────────────────────
+
+  function applyStats(data) {
+    sumTurns.textContent      = data.turn_count;
+    sumCompressed.textContent = data.compressed_count + ' msgs';
+
+    sessionTotalSent  = data.total_input_tokens;
+    sessionTotalSaved = data.total_savings;
+    sumSent.textContent  = fmt(sessionTotalSent);
+    sumSaved.textContent = fmt(sessionTotalSaved);
+
+    if (data.total_savings_pct > 0) {
+      totalSavingsNote.className   = 'savings-note';
+      totalSavingsNote.textContent = `${data.total_savings_pct}% token savings across session`;
+    } else {
+      totalSavingsNote.className   = 'savings-note zero';
+      totalSavingsNote.textContent = '0% savings across session';
+    }
+
+    if (data.turn_stats && data.turn_stats.length > 0) {
+      const last = data.turn_stats[data.turn_stats.length - 1];
+      updateComparisonBars(last.compressed_tokens, last.full_tokens);
+    }
+
+    updateSummary(data);
+    rebuildTurnTable(data.turn_stats || []);
+  }
+
+  function updateFromDone(event) {
+    sumTurns.textContent      = event.turn_stats.length;
+    sumCompressed.textContent = event.compressed_count + ' msgs';
+
+    sessionTotalSent  += event.input_tokens;
+    sessionTotalSaved += event.savings;
+    sumSent.textContent  = fmt(sessionTotalSent);
+    sumSaved.textContent = fmt(sessionTotalSaved);
+
+    const totalFull = sessionTotalSent + sessionTotalSaved;
+    const totalPct  = totalFull > 0 ? Math.round(sessionTotalSaved / totalFull * 100) : 0;
+    if (sessionTotalSaved > 0) {
+      totalSavingsNote.className   = 'savings-note';
+      totalSavingsNote.textContent = `${totalPct}% token savings across session`;
+    } else {
+      totalSavingsNote.className   = 'savings-note zero';
+      totalSavingsNote.textContent = '0% savings across session';
+    }
+
+    updateComparisonBars(event.compressed_tokens, event.full_tokens);
+    updateSummary(event);
+    rebuildTurnTable(event.turn_stats);
+  }
+
+  // ── Turn table ────────────────────────────────────────────────────────────
+
+  function rebuildTurnTable(turns) {
+    if (!turns.length) {
+      turnTbody.innerHTML = '<tr><td colspan="5" id="no-turns">No turns yet</td></tr>';
+      return;
+    }
+    turnTbody.innerHTML = turns.map((t, i) => {
+      const isLatest = i === turns.length - 1;
+      const isCompressed = t.compressed_this_turn;
+      const cls = isLatest ? 'latest' : (isCompressed ? 'compressed-turn' : '');
+      const saveText = t.savings > 0 ? `${fmt(t.savings)} (${t.savings_pct}%)` : '—';
+      return `
+        <tr class="${cls}">
+          <td>${t.turn}${isCompressed ? ' ⚡' : ''}</td>
+          <td class="td-sent">${fmt(t.compressed_tokens)}</td>
+          <td class="td-full">${t.savings > 0 ? fmt(t.full_tokens) : '—'}</td>
+          <td class="td-save">${saveText}</td>
+          <td>${t.time}s</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // ── Send ──────────────────────────────────────────────────────────────────
+
+  async function send() {
+    const text = inputEl.value.trim();
+    if (!text || streaming) return;
+
+    streaming = true;
+    sendBtn.disabled = true;
+    inputEl.disabled = true;
+
+    addMessage('user', text);
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+
+    const msgEl = addMessage('assistant');
+    msgEl.classList.add('streaming');
+
+    let accumulated = '';
+    let lastEventData = null;
+
+    try {
+      const resp = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+
+      const reader  = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+
+            if (event.type === 'text') {
+              accumulated += event.text;
+              msgEl.textContent = accumulated;
+              scrollToBottom();
+
+            } else if (event.type === 'done') {
+              msgEl.classList.remove('streaming');
+              if (event.compressed_this_turn) addCompressionEvent();
+              addMetricsRow(event);
+              updateFromDone(event);
+
+            } else if (event.type === 'error') {
+              msgEl.classList.remove('streaming');
+              msgEl.textContent = 'Error: ' + event.message;
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (err) {
+      msgEl.classList.remove('streaming');
+      msgEl.textContent = 'Connection error.';
+    }
+
+    streaming = false;
+    sendBtn.disabled = false;
+    inputEl.disabled = false;
+    inputEl.focus();
+  }
+
+  // ── Toggle compression ────────────────────────────────────────────────────
+
+  async function toggleCompression() {
+    const enabled = compToggle.checked;
+    updateCompBadge(enabled);
+    await fetch('/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ compression_enabled: enabled }),
+    });
+  }
+
+  function updateCompBadge(enabled) {
+    compBadge.textContent  = enabled ? 'ON' : 'OFF';
+    compBadge.className    = 'compression-badge' + (enabled ? '' : ' off');
+    modeTag.textContent    = 'compression: ' + (enabled ? 'ON' : 'OFF');
+    modeTag.className      = 'tag' + (enabled ? ' green' : '');
+  }
+
+  // ── Apply settings ────────────────────────────────────────────────────────
+
+  async function applySettings() {
+    const keepN     = parseInt(document.getElementById('keep-last-n').value) || 6;
+    const compEvery = parseInt(document.getElementById('compress-every').value) || 10;
+    await fetch('/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keep_last_n: keepN, compress_every: compEvery }),
+    });
+  }
+
+  // ── New conversation ──────────────────────────────────────────────────────
+
+  async function newConversation() {
+    await fetch('/reset', { method: 'POST' });
+    chatEl.innerHTML = '';
+    chatEl.appendChild(emptyState);
+    emptyState.style.display = 'flex';
+
+    sessionTotalSent = sessionTotalSaved = 0;
+    sumTurns.textContent      = '0';
+    sumCompressed.textContent = '0 msgs';
+    sumSent.textContent       = '0';
+    sumSaved.textContent      = '0';
+    totalSavingsNote.className   = 'savings-note zero';
+    totalSavingsNote.textContent = '0% savings across session';
+    cmpSent.textContent = '—';
+    cmpFull.textContent = '—';
+    barSent.style.width = '0%';
+    savingsNote.className   = 'savings-note zero';
+    savingsNote.textContent = 'No savings yet';
+    summaryContent.style.display = 'none';
+    summaryEmpty.style.display   = 'block';
+    summaryMeta.style.display    = 'none';
+    summaryAge.textContent       = '';
+    rebuildTurnTable([]);
+
+    inputEl.focus();
+  }
+</script>
+
+</body>
+</html>

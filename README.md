@@ -13,6 +13,7 @@
 - [Day 6 — First Agent](#day-6)
 - [Day 7 — Persistent Agent](#day-7)
 - [Day 8 — Token Inspector](#day-8)
+- [Day 9 — History Compression](#day-9)
 
 ---
 
@@ -196,3 +197,29 @@ A configurable demo limit (default 1,500 tokens) makes the overflow threshold ea
 | claude-opus-4-6 | 1,000,000 tokens |
 
 https://github.com/user-attachments/assets/26d08bee-b99d-4dda-9e2d-9f2006bb8414
+
+---
+
+<a name="day-9"></a>
+
+## Day 9 — History Compression
+
+[↑ Back to top](#ai-advent)
+
+Extends the Day 8 agent with automatic history summarization to keep token usage flat as conversations grow.
+
+The agent stores the full message history locally but only sends a compressed version to the API: a generated summary of older messages + the last N messages verbatim. When the number of summarizable messages hits a threshold (default: every 10), the model is called once to produce a new running summary, and that replaces all the older messages in subsequent requests.
+
+**How context is built each turn:**
+1. Messages older than the last N are summarized into a single text block
+2. The summary + last N messages are sent as the actual API context
+3. The full history stays on disk — nothing is ever permanently discarded
+
+**What the UI shows:**
+- **Token comparison bars** — "sent (compressed)" vs "would be (full history)" side by side every turn
+- **Savings %** per turn and cumulative across the session
+- **Summary panel** — live view of the current summary text and how many messages it covers
+- **Compression event pill** in the chat when a summary is generated
+- **Toggle** to switch compression on/off mid-conversation for quality comparison
+
+https://github.com/user-attachments/assets/5e930907-af47-4521-aa0d-b7a1f2d25c0a
