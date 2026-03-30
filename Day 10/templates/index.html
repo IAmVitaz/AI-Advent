@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude — Context Strategies</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f0f0f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ── */
+    .top-bar {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 0 20px;
+      height: 48px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .top-bar-title {
+      font-size: 14px;
+      font-weight: 700;
+      flex: 1;
+      letter-spacing: -0.2px;
+    }
+
+    /* strategy tabs */
+    .tab-group {
+      display: flex;
+      gap: 4px;
+      background: #2d2d2d;
+      padding: 4px;
+      border-radius: 8px;
+    }
+
+    .tab {
+      padding: 5px 14px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      background: transparent;
+      color: #aaa;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .tab:hover { color: #fff; background: #3d3d3d; }
+    .tab.active { background: #fff; color: #1a1a1a; }
+    .tab[data-s="sliding_window"].active { background: #6366f1; color: #fff; }
+    .tab[data-s="sticky_facts"].active  { background: #10b981; color: #fff; }
+    .tab[data-s="branching"].active     { background: #f59e0b; color: #fff; }
+
+    .top-bar-btn {
+      margin-left: 8px;
+      padding: 5px 12px;
+      background: #fff;
+      color: #1a1a1a;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .top-bar-btn:hover { opacity: 0.8; }
+
+    /* ── Layout ── */
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      gap: 0;
+    }
+
+    /* ── Chat column ── */
+    .chat-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .msg {
+      display: flex;
+      gap: 10px;
+      max-width: 720px;
+    }
+    .msg.user { flex-direction: row-reverse; align-self: flex-end; }
+    .msg.assistant { align-self: flex-start; }
+
+    .avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+    .msg.user .avatar     { background: #1a1a1a; color: #fff; }
+    .msg.assistant .avatar { background: #e5e5e5; color: #555; }
+
+    .bubble {
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg.user .bubble     { background: #1a1a1a; color: #fff; border-bottom-right-radius: 4px; }
+    .msg.assistant .bubble { background: #fff; color: #111; border-bottom-left-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+    /* ── Input bar ── */
+    .input-bar {
+      display: flex;
+      gap: 10px;
+      padding: 14px 20px;
+      background: #f0f0f0;
+      border-top: 1px solid #ddd;
+    }
+
+    .input-bar textarea {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1.5px solid #ccc;
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: none;
+      height: 44px;
+      max-height: 120px;
+      overflow-y: auto;
+      line-height: 1.45;
+      transition: border-color 0.15s;
+      background: #fff;
+    }
+    .input-bar textarea:focus { outline: none; border-color: #888; }
+
+    .send-btn {
+      padding: 0 18px;
+      height: 44px;
+      border: none;
+      border-radius: 10px;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    .send-btn:hover { opacity: 0.8; }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Right panel ── */
+    .panel {
+      width: 300px;
+      flex-shrink: 0;
+      background: #fff;
+      border-left: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 14px 16px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #888;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .strategy-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+    }
+    .dot-sw { background: #6366f1; }
+    .dot-sf { background: #10b981; }
+    .dot-br { background: #f59e0b; }
+
+    .panel-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* controls: existing stats/sliders/facts/branches — fixed height */
+    .panel-controls {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+      flex-shrink: 0;
+      max-height: 55%;
+      border-bottom: 1px solid #eee;
+    }
+
+    /* history section: takes remaining height */
+    .panel-history {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 10px 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .hist-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+
+    .hist-legend {
+      display: flex;
+      gap: 10px;
+      font-size: 10px;
+      color: #aaa;
+      align-items: center;
+    }
+
+    .hist-legend-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* individual history message row */
+    .hist-msg {
+      display: flex;
+      gap: 7px;
+      align-items: flex-start;
+      padding: 4px 6px 4px 8px;
+      border-radius: 5px;
+      border-left: 3px solid transparent;
+      margin-bottom: 2px;
+      font-size: 12px;
+      line-height: 1.4;
+      transition: background 0.1s;
+    }
+    .hist-msg:hover { background: #f9f9f9; }
+
+    /* in-context: colored accent by strategy */
+    .hist-msg.in-ctx {
+      background: #fafafa;
+    }
+    body[data-active="sliding_window"] .hist-msg.in-ctx { border-left-color: #6366f1; }
+    body[data-active="sticky_facts"]   .hist-msg.in-ctx { border-left-color: #10b981; }
+    body[data-active="branching"]      .hist-msg.in-ctx { border-left-color: #f59e0b; }
+
+    /* out-of-context: gray + dimmed */
+    .hist-msg.out-ctx {
+      opacity: 0.4;
+      border-left-color: #ddd;
+    }
+
+    /* synthetic prefix message (facts block) */
+    .hist-msg.synthetic {
+      border-left-color: #10b981;
+      border-left-style: dashed;
+      background: #f0fdf4;
+      opacity: 1;
+    }
+
+    /* checkpoint marker */
+    .hist-checkpoint-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 4px 0;
+      font-size: 10px;
+      color: #d97706;
+      font-weight: 600;
+    }
+    .hist-checkpoint-line::before,
+    .hist-checkpoint-line::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: #f59e0b;
+      opacity: 0.4;
+    }
+
+    .hist-role {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .hist-role.user { background: #1a1a1a; color: #fff; }
+    .hist-role.ai   { background: #e5e5e5; color: #555; }
+    .hist-role.sys  { background: #d1fae5; color: #059669; font-size: 8px; }
+
+    .hist-content {
+      flex: 1;
+      color: #333;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      word-break: break-word;
+    }
+
+    .hist-empty {
+      font-size: 12px;
+      color: #bbb;
+      font-style: italic;
+      text-align: center;
+      padding: 16px 0;
+    }
+
+    /* ── Panel sections ── */
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #aaa;
+      margin-bottom: 6px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      padding: 3px 0;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { color: #666; }
+    .stat-val { font-weight: 600; color: #111; }
+    .stat-val.purple { color: #6366f1; }
+    .stat-val.green  { color: #10b981; }
+    .stat-val.amber  { color: #d97706; }
+
+    /* window size control */
+    .range-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .range-wrap input[type=range] {
+      flex: 1;
+      accent-color: #6366f1;
+    }
+    .range-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: #6366f1;
+      min-width: 20px;
+      text-align: right;
+    }
+
+    /* facts list */
+    .fact-item {
+      display: flex;
+      gap: 6px;
+      font-size: 12px;
+      padding: 5px 8px;
+      background: #f0fdf4;
+      border-radius: 6px;
+      border-left: 3px solid #10b981;
+      margin-bottom: 5px;
+      word-break: break-word;
+    }
+    .fact-key {
+      font-weight: 700;
+      color: #059669;
+      white-space: nowrap;
+    }
+    .fact-val { color: #333; }
+    .no-facts { font-size: 12px; color: #aaa; font-style: italic; }
+
+    /* branching */
+    .branch-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1.5px solid #eee;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-size: 13px;
+    }
+    .branch-item:hover { border-color: #f59e0b; background: #fffbeb; }
+    .branch-item.active-branch { border-color: #f59e0b; background: #fffbeb; font-weight: 700; }
+    .branch-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .branch-count { font-size: 11px; color: #888; }
+    .branch-del {
+      font-size: 11px;
+      color: #ccc;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+    .branch-del:hover { color: #ef4444; background: #fee2e2; }
+
+    .checkpoint-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      background: #fef3c7;
+      border: 1.5px solid #f59e0b;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #92400e;
+    }
+
+    .panel-action {
+      display: flex;
+      gap: 6px;
+    }
+
+    .p-btn {
+      flex: 1;
+      padding: 7px 10px;
+      border: none;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .p-btn:hover { opacity: 0.8; }
+    .p-btn-amber { background: #f59e0b; color: #fff; }
+    .p-btn-dark  { background: #1a1a1a; color: #fff; }
+    .p-btn-outline {
+      background: transparent;
+      border: 1.5px solid #ddd;
+      color: #444;
+    }
+
+    /* turn chart */
+    .chart-bar-wrap {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 48px;
+    }
+    .chart-bar {
+      flex: 1;
+      min-width: 6px;
+      border-radius: 3px 3px 0 0;
+      transition: height 0.3s;
+      cursor: default;
+    }
+    .chart-bar.sw { background: #6366f1; }
+    .chart-bar.sf { background: #10b981; }
+    .chart-bar.br { background: #f59e0b; }
+
+    /* new-branch modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.4);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      width: 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.2);
+    }
+    .modal h3 { font-size: 15px; font-weight: 700; }
+    .modal input {
+      padding: 8px 12px;
+      border: 1.5px solid #ddd;
+      border-radius: 7px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .modal input:focus { outline: none; border-color: #f59e0b; }
+    .modal-actions { display: flex; gap: 8px; }
+
+    /* theme badge per strategy */
+    .strategy-badge {
+      display: inline-flex;
+      gap: 5px;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+    }
+    .badge-sw { background: #ede9fe; color: #6366f1; }
+    .badge-sf { background: #d1fae5; color: #059669; }
+    .badge-br { background: #fef3c7; color: #d97706; }
+
+    /* panel sections hidden by strategy */
+    .sw-only, .sf-only, .br-only { display: none; }
+    body[data-active="sliding_window"] .sw-only { display: block; }
+    body[data-active="sticky_facts"]   .sf-only  { display: block; }
+    body[data-active="branching"]      .br-only  { display: block; }
+
+    /* typing indicator */
+    .typing-bubble {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      padding: 10px 14px;
+    }
+    .dot-anim {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #bbb;
+      animation: bounce 1.2s infinite;
+    }
+    .dot-anim:nth-child(2) { animation-delay: .2s; }
+    .dot-anim:nth-child(3) { animation-delay: .4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-6px); }
+    }
+
+    /* hidden panel pane switching */
+    .pane { display: none; }
+    .pane.visible { display: contents; }
+  </style>
+</head>
+<body data-active="sliding_window">
+
+<!-- ── Top bar ── -->
+<div class="top-bar">
+  <span class="top-bar-title">Claude — Context Strategies</span>
+  <div class="tab-group">
+    <button class="tab active" data-s="sliding_window" onclick="switchStrategy('sliding_window')">Sliding Window</button>
+    <button class="tab" data-s="sticky_facts"    onclick="switchStrategy('sticky_facts')">Sticky Facts</button>
+    <button class="tab" data-s="branching"        onclick="switchStrategy('branching')">Branching</button>
+  </div>
+  <button class="top-bar-btn" onclick="resetCurrent()">Reset</button>
+</div>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- Chat column -->
+  <div class="chat-col">
+    <div class="messages" id="messages"></div>
+    <div class="input-bar">
+      <textarea id="userInput" placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
+                onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="strategy-dot dot-sw sw-only"></div>
+      <div class="strategy-dot dot-sf sf-only"></div>
+      <div class="strategy-dot dot-br br-only"></div>
+      <span id="panelTitle">Sliding Window</span>
+    </div>
+
+    <div class="panel-body">
+
+      <!-- ── Controls (top section) ── -->
+      <div class="panel-controls">
+
+        <!-- Sliding Window controls -->
+        <div class="sw-only">
+          <div class="section-label">Window Size</div>
+          <div class="range-wrap">
+            <input type="range" id="windowSlider" min="2" max="20" value="6"
+                   oninput="updateWindowLabel(this.value)" onchange="setWindowSize(this.value)">
+            <span class="range-val" id="windowVal">6</span>
+          </div>
+
+          <div class="section-label" style="margin-top:12px">Stats</div>
+          <div class="stat-row">
+            <span class="stat-label">Total messages</span>
+            <span class="stat-val" id="sw-total">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">In context</span>
+            <span class="stat-val purple" id="sw-inctx">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Discarded</span>
+            <span class="stat-val" id="sw-discard" style="color:#ef4444">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Last input tokens</span>
+            <span class="stat-val purple" id="sw-tokens">—</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Last response time</span>
+            <span class="stat-val" id="sw-time">—</span>
+          </div>
+
+          <div class="section-label" style="margin-top:12px">Token History</div>
+          <div class="chart-bar-wrap" id="sw-chart"></div>
+        </div>
+
+        <!-- Sticky Facts controls -->
+        <div class="sf-only">
+          <div class="section-label">Extracted Facts <span id="sf-count" style="color:#10b981;font-size:11px"></span></div>
+          <div id="sf-facts"><p class="no-facts">No facts yet — start chatting.</p></div>
+
+          <div class="section-label" style="margin-top:12px">Stats</div>
+          <div class="stat-row">
+            <span class="stat-label">Total messages</span>
+            <span class="stat-val" id="sf-total">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Context messages</span>
+            <span class="stat-val green" id="sf-inctx">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Last input tokens</span>
+            <span class="stat-val green" id="sf-tokens">—</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Last response time</span>
+            <span class="stat-val" id="sf-time">—</span>
+          </div>
+
+          <div class="section-label" style="margin-top:12px">Token History</div>
+          <div class="chart-bar-wrap" id="sf-chart"></div>
+        </div>
+
+        <!-- Branching controls -->
+        <div class="br-only">
+          <div class="section-label">Checkpoint</div>
+          <div id="br-checkpoint">
+            <p class="no-facts">No checkpoint set.</p>
+          </div>
+          <div class="panel-action" style="margin-top:6px">
+            <button class="p-btn p-btn-amber" onclick="createCheckpoint()">Set Checkpoint</button>
+            <button class="p-btn p-btn-outline" onclick="openBranchModal()">New Branch</button>
+          </div>
+
+          <div class="section-label" style="margin-top:14px">Branches</div>
+          <div id="br-branches"></div>
+
+          <div class="section-label" style="margin-top:12px">Stats</div>
+          <div class="stat-row">
+            <span class="stat-label">Active branch</span>
+            <span class="stat-val amber" id="br-active">main</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Messages in branch</span>
+            <span class="stat-val" id="br-msgs">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Last input tokens</span>
+            <span class="stat-val amber" id="br-tokens">—</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Last response time</span>
+            <span class="stat-val" id="br-time">—</span>
+          </div>
+
+          <div class="section-label" style="margin-top:12px">Token History</div>
+          <div class="chart-bar-wrap" id="br-chart"></div>
+        </div>
+
+      </div><!-- /panel-controls -->
+
+      <!-- ── History (bottom section) ── -->
+      <div class="panel-history">
+        <div class="hist-header">
+          <span class="section-label" style="margin:0">Message History</span>
+          <div class="hist-legend">
+            <span><span class="hist-legend-dot" id="legend-dot" style="background:#6366f1"></span> In context</span>
+            <span><span class="hist-legend-dot" style="background:#ddd"></span> Not sent</span>
+          </div>
+        </div>
+        <div id="history-list"><p class="hist-empty">No messages yet.</p></div>
+      </div>
+
+    </div><!-- /panel-body -->
+  </div><!-- /panel -->
+</div><!-- /main -->
+
+<!-- Branch name modal -->
+<div class="modal-overlay" id="branchModal">
+  <div class="modal">
+    <h3>Create New Branch</h3>
+    <p style="font-size:13px;color:#666">Branch will fork from the current checkpoint (or current end of conversation).</p>
+    <input type="text" id="branchNameInput" placeholder="Branch name (e.g. alt-approach)" />
+    <div class="modal-actions">
+      <button class="p-btn p-btn-dark" onclick="confirmCreateBranch()">Create</button>
+      <button class="p-btn p-btn-outline" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let activeStrategy = "sliding_window";
+let swStats = [], sfStats = [], brStats = [];
+let currentBranch = "main";
+let isStreaming = false;
+
+const STRATEGY_LABELS = {
+  sliding_window: "Sliding Window",
+  sticky_facts:   "Sticky Facts",
+  branching:      "Branching",
+};
+
+// ── Strategy switch ────────────────────────────────────────────────────────
+async function switchStrategy(name) {
+  const res = await fetch("/strategy", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({strategy: name}),
+  });
+  const data = await res.json();
+  activeStrategy = name;
+  document.body.dataset.active = name;
+  document.getElementById("panelTitle").textContent = STRATEGY_LABELS[name];
+
+  document.querySelectorAll(".tab").forEach(t => {
+    t.classList.toggle("active", t.dataset.s === name);
+  });
+
+  clearMessages();
+  addWelcomeMessage(name);
+  refreshPanel(data);
+  updateLegendDot();
+}
+
+// ── Welcome message per strategy ───────────────────────────────────────────
+function addWelcomeMessage(s) {
+  const msgs = {
+    sliding_window: "Strategy: Sliding Window — only the last N messages are sent to the model. Everything older is discarded. Adjust the window size in the panel.",
+    sticky_facts:   "Strategy: Sticky Facts — after each message, key facts are extracted and stored. The model receives: facts + last N messages.",
+    branching:      "Strategy: Branching — full conversation history. Set a checkpoint, then fork into independent branches and switch between them.",
+  };
+  appendMsg("system", msgs[s]);
+}
+
+// ── Messaging ──────────────────────────────────────────────────────────────
+function clearMessages() {
+  document.getElementById("messages").innerHTML = "";
+}
+
+function appendMsg(role, text) {
+  const wrap = document.getElementById("messages");
+  if (role === "system") {
+    const div = document.createElement("div");
+    div.style.cssText = "font-size:12px;color:#888;text-align:center;padding:6px 0;";
+    div.textContent = text;
+    wrap.appendChild(div);
+    scrollBottom();
+    return;
+  }
+  const row = document.createElement("div");
+  row.className = `msg ${role}`;
+  row.innerHTML = `
+    <div class="avatar">${role === "user" ? "U" : "AI"}</div>
+    <div class="bubble"></div>
+  `;
+  row.querySelector(".bubble").textContent = text;
+  wrap.appendChild(row);
+  scrollBottom();
+  return row;
+}
+
+function addAssistantBubble() {
+  const wrap = document.getElementById("messages");
+  const row = document.createElement("div");
+  row.className = "msg assistant";
+  row.innerHTML = `
+    <div class="avatar">AI</div>
+    <div class="bubble">
+      <div class="typing-bubble">
+        <div class="dot-anim"></div><div class="dot-anim"></div><div class="dot-anim"></div>
+      </div>
+    </div>
+  `;
+  wrap.appendChild(row);
+  scrollBottom();
+  return row;
+}
+
+function scrollBottom() {
+  const w = document.getElementById("messages");
+  w.scrollTop = w.scrollHeight;
+}
+
+// ── Send ───────────────────────────────────────────────────────────────────
+async function sendMessage() {
+  if (isStreaming) return;
+  const ta = document.getElementById("userInput");
+  const msg = ta.value.trim();
+  if (!msg) return;
+
+  ta.value = "";
+  ta.style.height = "44px";
+  isStreaming = true;
+  document.getElementById("sendBtn").disabled = true;
+
+  appendMsg("user", msg);
+  const aRow = addAssistantBubble();
+  const bubble = aRow.querySelector(".bubble");
+
+  const res = await fetch("/chat", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({message: msg}),
+  });
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let firstChunk = true;
+  let fullText = "";
+
+  while (true) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, {stream: true});
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop();
+
+    for (const part of parts) {
+      if (!part.startsWith("data: ")) continue;
+      const evt = JSON.parse(part.slice(6));
+
+      if (evt.type === "text") {
+        if (firstChunk) { bubble.innerHTML = ""; firstChunk = false; }
+        fullText += evt.text;
+        bubble.textContent = fullText;
+        scrollBottom();
+      } else if (evt.type === "done") {
+        handleDone(evt);
+      } else if (evt.type === "error") {
+        bubble.textContent = "Error: " + evt.message;
+        bubble.style.color = "#ef4444";
+      }
+    }
+  }
+
+  isStreaming = false;
+  document.getElementById("sendBtn").disabled = false;
+  document.getElementById("userInput").focus();
+}
+
+function handleKey(e) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = "44px";
+  el.style.height = Math.min(el.scrollHeight, 120) + "px";
+}
+
+// ── Done handler ───────────────────────────────────────────────────────────
+function handleDone(evt) {
+  if (activeStrategy === "sliding_window") {
+    swStats = evt.turn_stats || [];
+    document.getElementById("sw-total").textContent   = evt.total_messages;
+    document.getElementById("sw-inctx").textContent   = evt.context_size;
+    document.getElementById("sw-discard").textContent = evt.discarded;
+    document.getElementById("sw-tokens").textContent  = evt.input_tokens;
+    document.getElementById("sw-time").textContent    = evt.time + "s";
+    renderChart("sw-chart", swStats, "sw");
+
+  } else if (activeStrategy === "sticky_facts") {
+    sfStats = evt.turn_stats || [];
+    document.getElementById("sf-total").textContent = evt.total_messages;
+    document.getElementById("sf-inctx").textContent = evt.context_size;
+    document.getElementById("sf-tokens").textContent = evt.input_tokens;
+    document.getElementById("sf-time").textContent   = evt.time + "s";
+    renderFacts(evt.facts || {});
+    renderChart("sf-chart", sfStats, "sf");
+
+  } else if (activeStrategy === "branching") {
+    brStats = evt.turn_stats || [];
+    currentBranch = evt.current_branch;
+    document.getElementById("br-active").textContent = currentBranch;
+    document.getElementById("br-msgs").textContent   = evt.branch_messages;
+    document.getElementById("br-tokens").textContent = evt.input_tokens;
+    document.getElementById("br-time").textContent   = evt.time + "s";
+    renderBranches(evt.branches || {}, evt.checkpoint);
+    renderChart("br-chart", brStats, "br");
+  }
+
+  if (evt.history_view) renderHistory(evt.history_view);
+}
+
+// ── Facts renderer ─────────────────────────────────────────────────────────
+function renderFacts(facts) {
+  const el = document.getElementById("sf-facts");
+  const keys = Object.keys(facts);
+  document.getElementById("sf-count").textContent = keys.length ? `(${keys.length})` : "";
+  if (!keys.length) {
+    el.innerHTML = '<p class="no-facts">No facts yet.</p>';
+    return;
+  }
+  el.innerHTML = keys.map(k =>
+    `<div class="fact-item">
+       <span class="fact-key">${escHtml(k)}:</span>
+       <span class="fact-val">${escHtml(String(facts[k]))}</span>
+     </div>`
+  ).join("");
+}
+
+// ── Branch renderer ────────────────────────────────────────────────────────
+function renderBranches(branches, checkpoint) {
+  // checkpoint badge
+  const cpEl = document.getElementById("br-checkpoint");
+  if (checkpoint) {
+    cpEl.innerHTML = `<div class="checkpoint-badge">&#9873; ${escHtml(checkpoint.label)} (turn ${Math.floor(checkpoint.idx/2)})</div>`;
+  } else {
+    cpEl.innerHTML = '<p class="no-facts">No checkpoint set.</p>';
+  }
+
+  // branch list
+  const el = document.getElementById("br-branches");
+  el.innerHTML = Object.entries(branches).map(([id, b]) => `
+    <div class="branch-item ${id === currentBranch ? 'active-branch' : ''}"
+         onclick="switchBranch('${escHtml(id)}')">
+      <span class="branch-name">${id === "main" ? "&#9632; main" : "&#9670; " + escHtml(b.name)}</span>
+      <span class="branch-count">${b.message_count} msgs</span>
+      ${id !== "main" ? `<span class="branch-del" onclick="deleteBranch(event,'${escHtml(id)}')">&#10005;</span>` : ""}
+    </div>
+  `).join("");
+}
+
+// ── Panel refresh from stats endpoint ─────────────────────────────────────
+function refreshPanel(data) {
+  const s = data[activeStrategy] || {};
+  if (activeStrategy === "sliding_window") {
+    document.getElementById("sw-total").textContent   = s.total_messages || 0;
+    document.getElementById("sw-discard").textContent = s.discarded || 0;
+    swStats = s.turn_stats || [];
+    renderChart("sw-chart", swStats, "sw");
+    document.getElementById("windowSlider").value = s.window_size || 6;
+    document.getElementById("windowVal").textContent = s.window_size || 6;
+
+  } else if (activeStrategy === "sticky_facts") {
+    document.getElementById("sf-total").textContent = s.total_messages || 0;
+    sfStats = s.turn_stats || [];
+    renderFacts(s.facts || {});
+    renderChart("sf-chart", sfStats, "sf");
+
+  } else if (activeStrategy === "branching") {
+    brStats = s.turn_stats || [];
+    currentBranch = s.current_branch || "main";
+    document.getElementById("br-active").textContent = currentBranch;
+    renderBranches(s.branches || {main: {name:"main", message_count:0}}, s.checkpoint);
+    renderChart("br-chart", brStats, "br");
+  }
+
+  if (s.history_view) renderHistory(s.history_view);
+  updateLegendDot();
+}
+
+// ── History renderer ───────────────────────────────────────────────────────
+function renderHistory(view) {
+  const el = document.getElementById("history-list");
+  const messages  = view.messages || [];
+  const prefix    = view.context_prefix || [];
+
+  if (!messages.length && !prefix.length) {
+    el.innerHTML = '<p class="hist-empty">No messages yet.</p>';
+    return;
+  }
+
+  const parts = [];
+
+  // Synthetic prefix (Sticky Facts facts block)
+  if (prefix.length) {
+    prefix.forEach(m => {
+      parts.push(histMsgHtml(m.role, m.content, false, false, true));
+    });
+    parts.push('<div style="height:4px;border-bottom:1px dashed #d1fae5;margin:2px 0 6px"></div>');
+  }
+
+  // Actual history messages
+  messages.forEach((m, i) => {
+    // Branching: checkpoint marker between messages
+    if (m.at_checkpoint) {
+      parts.push(`<div class="hist-checkpoint-line">checkpoint</div>`);
+    }
+    parts.push(histMsgHtml(m.role, m.content, m.in_context, m.at_checkpoint, false));
+  });
+
+  el.innerHTML = parts.join("");
+  // Scroll history to bottom
+  el.parentElement.scrollTop = el.parentElement.scrollHeight;
+}
+
+function histMsgHtml(role, content, inCtx, atCheckpoint, synthetic) {
+  const cls = synthetic ? "synthetic" : (inCtx ? "in-ctx" : "out-ctx");
+  const roleLabel = role === "user" ? "U" : (synthetic ? "F" : "AI");
+  const roleCls   = role === "user" ? "user" : (synthetic ? "sys" : "ai");
+  const preview = String(content).replace(/\n/g, " ").trim();
+  return `
+    <div class="hist-msg ${cls}">
+      <span class="hist-role ${roleCls}">${roleLabel}</span>
+      <span class="hist-content">${escHtml(preview)}</span>
+    </div>`;
+}
+
+function updateLegendDot() {
+  const colors = { sliding_window: "#6366f1", sticky_facts: "#10b981", branching: "#f59e0b" };
+  document.getElementById("legend-dot").style.background = colors[activeStrategy] || "#999";
+}
+
+// ── Token chart ────────────────────────────────────────────────────────────
+function renderChart(id, stats, cls) {
+  const el = document.getElementById(id);
+  if (!stats.length) { el.innerHTML = ""; return; }
+  const max = Math.max(...stats.map(s => s.input_tokens || 0), 1);
+  el.innerHTML = stats.map(s => {
+    const h = Math.max(4, Math.round(((s.input_tokens || 0) / max) * 44));
+    return `<div class="chart-bar ${cls}" style="height:${h}px"
+             title="Turn ${s.turn}: ${s.input_tokens} tokens, ${s.time}s"></div>`;
+  }).join("");
+}
+
+// ── Window size ────────────────────────────────────────────────────────────
+function updateWindowLabel(v) {
+  document.getElementById("windowVal").textContent = v;
+}
+
+async function setWindowSize(v) {
+  await fetch("/config/window", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({window_size: parseInt(v)}),
+  });
+}
+
+// ── Reset ──────────────────────────────────────────────────────────────────
+async function resetCurrent() {
+  const res = await fetch("/reset", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({which: "current"}),
+  });
+  const data = await res.json();
+  clearMessages();
+  addWelcomeMessage(activeStrategy);
+  refreshPanel(data);
+  renderHistory({messages: [], context_prefix: []});
+}
+
+// ── Branching actions ──────────────────────────────────────────────────────
+async function createCheckpoint() {
+  const res = await fetch("/branch/checkpoint", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({}),
+  });
+  const data = await res.json();
+  renderBranches(data.branches || {}, data.checkpoint);
+  appendMsg("system", `Checkpoint set: "${data.checkpoint.label}"`);
+}
+
+function openBranchModal() {
+  document.getElementById("branchModal").classList.add("open");
+  document.getElementById("branchNameInput").focus();
+}
+
+function closeModal() {
+  document.getElementById("branchModal").classList.remove("open");
+  document.getElementById("branchNameInput").value = "";
+}
+
+async function confirmCreateBranch() {
+  const name = document.getElementById("branchNameInput").value.trim() || "branch-" + Date.now();
+  closeModal();
+  const res = await fetch("/branch/create", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({name}),
+  });
+  const data = await res.json();
+  renderBranches(data.branches || {}, data.checkpoint);
+  appendMsg("system", `Branch "${data.branch_id}" created from ${data.checkpoint?.label || "current"}.`);
+}
+
+async function switchBranch(id) {
+  if (id === currentBranch) return;
+  const res = await fetch("/branch/switch", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({branch_id: id}),
+  });
+  const data = await res.json();
+  currentBranch = id;
+  document.getElementById("br-active").textContent = id;
+  document.getElementById("br-msgs").textContent = data.message_count || 0;
+  renderBranches(data.branches || {}, data.checkpoint);
+  if (data.history_view) renderHistory(data.history_view);
+  appendMsg("system", `Switched to branch "${id}" (${data.message_count} messages).`);
+}
+
+async function deleteBranch(e, id) {
+  e.stopPropagation();
+  if (!confirm(`Delete branch "${id}"?`)) return;
+  const res = await fetch("/branch/delete", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({branch_id: id}),
+  });
+  const data = await res.json();
+  if (data.current_branch) currentBranch = data.current_branch;
+  document.getElementById("br-active").textContent = currentBranch;
+  renderBranches(data.branches || {}, data.checkpoint);
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+(async () => {
+  const res = await fetch("/stats");
+  const data = await res.json();
+  activeStrategy = data.active || "sliding_window";
+  document.body.dataset.active = activeStrategy;
+  document.getElementById("panelTitle").textContent = STRATEGY_LABELS[activeStrategy];
+  document.querySelectorAll(".tab").forEach(t => {
+    t.classList.toggle("active", t.dataset.s === activeStrategy);
+  });
+  refreshPanel(data);
+  updateLegendDot();
+  addWelcomeMessage(activeStrategy);
+  document.getElementById("userInput").focus();
+})();
+</script>
+</body>
+</html>

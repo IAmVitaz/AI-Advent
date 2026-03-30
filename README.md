@@ -14,6 +14,7 @@
 - [Day 7 — Persistent Agent](#day-7)
 - [Day 8 — Token Inspector](#day-8)
 - [Day 9 — History Compression](#day-9)
+- [Day 10 — Context Strategies](#day-10)
 
 ---
 
@@ -223,3 +224,41 @@ The agent stores the full message history locally but only sends a compressed ve
 - **Toggle** to switch compression on/off mid-conversation for quality comparison
 
 https://github.com/user-attachments/assets/5e930907-af47-4521-aa0d-b7a1f2d25c0a
+
+---
+
+<a name="day-10"></a>
+
+## Day 10 — Context Strategies
+
+[↑ Back to top](#ai-advent)
+
+A single agent with three switchable context management strategies, each with a live message history panel showing exactly which messages were sent in the last request and which were not.
+
+**The three strategies:**
+
+### Sliding Window
+Only the last N messages are sent to the model. Everything older is silently dropped — the model never sees it.
+
+- **How it works:** after every turn, slice `history[-N:]` and use that as the API payload. N is adjustable via a slider.
+- **Pros:** predictable token cost, simple to implement, zero extra API calls.
+- **Cons:** loses all context beyond the window — the model forgets names, decisions, and goals from earlier in the conversation.
+- **Best for:** short task-focused sessions, customer support scripts, simple Q&A, any scenario where old turns genuinely don't matter.
+
+### Sticky Facts
+After every user message, a separate extraction call pulls key facts (goal, constraints, preferences, decisions, names, numbers) into a compact key-value store. Each request sends: `[facts block] + last N messages`.
+
+- **How it works:** the facts dict is updated after each turn via a lightweight extraction prompt. The main request prepends the facts as a synthetic message pair before the recent window.
+- **Pros:** critical information survives indefinitely regardless of conversation length; token cost stays low; the model always knows the goal and decisions even if the original messages are gone.
+- **Cons:** requires an extra API call per turn; extraction can miss nuance or misparse complex values; facts can go stale if the user changes direction.
+- **Best for:** requirement gathering, planning sessions, long multi-topic conversations where key decisions must stay in context.
+
+### Branching
+Full conversation history is always sent — no truncation. A checkpoint can be set at any message, and new branches forked from that point. Each branch is an independent conversation that can be continued and switched between freely.
+
+- **How it works:** branches are stored as separate message lists sharing a common prefix up to the checkpoint. Switching branches replaces the active history; the message history panel updates immediately to reflect the new branch.
+- **Pros:** lets you explore "what if" directions from the same starting point without losing either path; great for comparing different approaches side by side.
+- **Cons:** token cost grows linearly with history length (no compression); branching many times from deep conversations uses a lot of tokens per request.
+- **Best for:** design exploration, A/B prompt testing, negotiation scenarios, educational tutoring where you want to try different explanation angles from the same setup.
+
+https://github.com/user-attachments/assets/92266dc3-6002-4a72-b089-110e44eed9e4
