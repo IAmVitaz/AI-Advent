@@ -19,7 +19,8 @@
 ---
 
 <details>
-<summary><a name="day-1"></a><strong>Day 1 — Script to Anki Deck</strong></summary>
+<summary><strong>Day 1 — Script to Anki Deck</strong></summary>
+<a name="day-1"></a>
 
 [↑ Back to top](#ai-advent)
 
@@ -34,7 +35,8 @@ A Python web app that converts scripts into Anki flashcard decks for spaced repe
 ---
 
 <details>
-<summary><a name="day-2"></a><strong>Day 2 — Response Control Comparison</strong></summary>
+<summary><strong>Day 2 — Response Control Comparison</strong></summary>
+<a name="day-2"></a>
 
 [↑ Back to top](#ai-advent)
 
@@ -47,7 +49,8 @@ A simple Python web app with a split-panel chat interface that sends the same qu
 ---
 
 <details>
-<summary><a name="day-3"></a><strong>Day 3 — Reasoning Mode Comparison</strong></summary>
+<summary><strong>Day 3 — Reasoning Mode Comparison</strong></summary>
+<a name="day-3"></a>
 
 [↑ Back to top](#ai-advent)
 
@@ -70,7 +73,8 @@ The test problem: *"I have a metal cup with the bottom missing and the top seale
 ---
 
 <details>
-<summary><a name="day-4"></a><strong>Day 4 — Temperature Comparison</strong></summary>
+<summary><strong>Day 4 — Temperature Comparison</strong></summary>
+<a name="day-4"></a>
 
 [↑ Back to top](#ai-advent)
 
@@ -102,7 +106,8 @@ At temperature 0 the model locked onto "dragon" with zero deviation across all 2
 ---
 
 <details>
-<summary><a name="day-5"></a><strong>Day 5 — Model Strength Comparison</strong></summary>
+<summary><strong>Day 5 — Model Strength Comparison</strong></summary>
+<a name="day-5"></a>
 
 [↑ Back to top](#ai-advent)
 
@@ -136,7 +141,8 @@ A Python web app that sends the same prompt to three Claude models simultaneousl
 ---
 
 <details>
-<summary><a name="day-6"></a><strong>Day 6 — First Agent</strong></summary>
+<summary><strong>Day 6 — First Agent</strong></summary>
+<a name="day-6"></a>
 
 [↑ Back to top](#ai-advent)
 
@@ -156,7 +162,8 @@ A Python web app implementing a simple stateful chat agent. Unlike previous days
 ---
 
 <details>
-<summary><a name="day-7"></a><strong>Day 7 — Persistent Agent</strong></summary>
+<summary><strong>Day 7 — Persistent Agent</strong></summary>
+<a name="day-7"></a>
 
 [↑ Back to top](#ai-advent)
 
@@ -182,7 +189,8 @@ Extends the Day 6 agent with persistent conversation history. The agent saves th
 ---
 
 <details>
-<summary><a name="day-8"></a><strong>Day 8 — Token Inspector</strong></summary>
+<summary><strong>Day 8 — Token Inspector</strong></summary>
+<a name="day-8"></a>
 
 [↑ Back to top](#ai-advent)
 
@@ -210,7 +218,8 @@ A configurable demo limit (default 1,500 tokens) makes the overflow threshold ea
 ---
 
 <details>
-<summary><a name="day-9"></a><strong>Day 9 — History Compression</strong></summary>
+<summary><strong>Day 9 — History Compression</strong></summary>
+<a name="day-9"></a>
 
 [↑ Back to top](#ai-advent)
 
@@ -237,7 +246,8 @@ The agent stores the full message history locally but only sends a compressed ve
 ---
 
 <details>
-<summary><a name="day-10"></a><strong>Day 10 — Context Strategies</strong></summary>
+<summary><strong>Day 10 — Context Strategies</strong></summary>
+<a name="day-10"></a>
 
 [↑ Back to top](#ai-advent)
 
