@@ -18,9 +18,8 @@
 
 ---
 
-<a name="day-1"></a>
-
-## Day 1 — Script to Anki Deck
+<details>
+<summary><a name="day-1"></a><strong>Day 1 — Script to Anki Deck</strong></summary>
 
 [↑ Back to top](#ai-advent)
 
@@ -30,23 +29,25 @@ A Python web app that converts scripts into Anki flashcard decks for spaced repe
 
 [GitHub →](https://github.com/IAmVitaz/ScriptToAnkiDeck)
 
+</details>
+
 ---
 
-<a name="day-2"></a>
-
-## Day 2 — Response Control Comparison
+<details>
+<summary><a name="day-2"></a><strong>Day 2 — Response Control Comparison</strong></summary>
 
 [↑ Back to top](#ai-advent)
 
 A simple Python web app with a split-panel chat interface that sends the same question to Claude twice — once with no constraints, once with explicit format, length limit, and stop sequence.
 
-<video src="https://github.com/user-attachments/assets/549311e9-9428-47a9-8ea5-03430cdb5ad4" width="640" height="360" controls></video>
+<video src="https://github.com/user-attachments/assets/549311e9-9428-47a9-8ea5-03430cdb5ad4" controls></video>
+
+</details>
 
 ---
 
-<a name="day-3"></a>
-
-## Day 3 — Reasoning Mode Comparison
+<details>
+<summary><a name="day-3"></a><strong>Day 3 — Reasoning Mode Comparison</strong></summary>
 
 [↑ Back to top](#ai-advent)
 
@@ -62,13 +63,14 @@ The test problem: *"I have a metal cup with the bottom missing and the top seale
 
 **Result:** Only the Expert panel (approach 4) surfaced the key insight — *inverted use* (turn it upside down and use it as a tube or funnel). The other three approaches listed conventional uses or declared the cup broken/unusable. Structured role diversity unlocked a creative angle that direct and chain-of-thought prompting missed.
 
-<video src="https://github.com/user-attachments/assets/a4392ef7-f0a0-45fb-bed6-e8fc80dabe7c" width="640" height="360" controls></video>
+<video src="https://github.com/user-attachments/assets/a4392ef7-f0a0-45fb-bed6-e8fc80dabe7c" controls></video>
+
+</details>
 
 ---
 
-<a name="day-4"></a>
-
-## Day 4 — Temperature Comparison
+<details>
+<summary><a name="day-4"></a><strong>Day 4 — Temperature Comparison</strong></summary>
 
 [↑ Back to top](#ai-advent)
 
@@ -93,13 +95,14 @@ A Python web app that sends the same prompt to Claude 15 times simultaneously �
 
 At temperature 0 the model locked onto "dragon" with zero deviation across all 25 runs. Temperature 0.5 broke out once. Temperature 1.0 escaped 10 times — producing words like "wizard", "princess", "witch", and others. The 5-runs-per-column layout turned an abstract concept into a concrete, countable experiment.
 
-<video src="https://github.com/user-attachments/assets/593d5c09-75ad-4986-baf0-d84cb36c472f" width="640" height="360" controls></video>
+<video src="https://github.com/user-attachments/assets/593d5c09-75ad-4986-baf0-d84cb36c472f" controls></video>
+
+</details>
 
 ---
 
-<a name="day-5"></a>
-
-## Day 5 — Model Strength Comparison
+<details>
+<summary><a name="day-5"></a><strong>Day 5 — Model Strength Comparison</strong></summary>
 
 [↑ Back to top](#ai-advent)
 
@@ -126,13 +129,14 @@ A Python web app that sends the same prompt to three Claude models simultaneousl
 - Haiku used bullet points and short paragraphs; Sonnet structured numbered steps with bold emphasis; Opus wrote in flowing prose with richer analogies
 - For factual explanation tasks at this complexity level, Haiku delivers comparable accuracy at a fraction of the cost and latency
 
-<video src="https://github.com/user-attachments/assets/8b2e0cc5-b7af-45c1-838c-5cd3bcc0a8c6" width="640" height="360" controls></video>
+<video src="https://github.com/user-attachments/assets/8b2e0cc5-b7af-45c1-838c-5cd3bcc0a8c6" controls></video>
+
+</details>
 
 ---
 
-<a name="day-6"></a>
-
-## Day 6 — First Agent
+<details>
+<summary><a name="day-6"></a><strong>Day 6 — First Agent</strong></summary>
 
 [↑ Back to top](#ai-advent)
 
@@ -145,13 +149,14 @@ A Python web app implementing a simple stateful chat agent. Unlike previous days
 
 **Metrics shown after every message:** input tokens · output tokens · response time · memory (JSON size of full conversation history in KB)
 
-<video src="https://github.com/user-attachments/assets/0d45c3c8-995a-4aa9-8bb7-4bd209f2f3ac" width="640" height="360" controls></video>
+<video src="https://github.com/user-attachments/assets/0d45c3c8-995a-4aa9-8bb7-4bd209f2f3ac" controls></video>
+
+</details>
 
 ---
 
-<a name="day-7"></a>
-
-## Day 7 — Persistent Agent
+<details>
+<summary><a name="day-7"></a><strong>Day 7 — Persistent Agent</strong></summary>
 
 [↑ Back to top](#ai-advent)
 
@@ -170,13 +175,14 @@ Extends the Day 6 agent with persistent conversation history. The agent saves th
 
 **Key insight:** the LLM itself is stateless — it has no memory between calls. "Persistence" is entirely about what you pass in `messages`. Saving and replaying that list is all it takes to make the agent feel continuous.
 
-<video src="https://github.com/user-attachments/assets/afcb4fb9-c771-43af-afea-e179252a455e" width="640" height="360" controls></video>
+<video src="https://github.com/user-attachments/assets/afcb4fb9-c771-43af-afea-e179252a455e" controls></video>
+
+</details>
 
 ---
 
-<a name="day-8"></a>
-
-## Day 8 — Token Inspector
+<details>
+<summary><a name="day-8"></a><strong>Day 8 — Token Inspector</strong></summary>
 
 [↑ Back to top](#ai-advent)
 
@@ -197,13 +203,14 @@ A configurable demo limit (default 1,500 tokens) makes the overflow threshold ea
 | claude-sonnet-4-6 | 1,000,000 tokens |
 | claude-opus-4-6 | 1,000,000 tokens |
 
-<video src="https://github.com/user-attachments/assets/26d08bee-b99d-4dda-9e2d-9f2006bb8414" width="640" height="360" controls></video>
+<video src="https://github.com/user-attachments/assets/26d08bee-b99d-4dda-9e2d-9f2006bb8414" controls></video>
+
+</details>
 
 ---
 
-<a name="day-9"></a>
-
-## Day 9 — History Compression
+<details>
+<summary><a name="day-9"></a><strong>Day 9 — History Compression</strong></summary>
 
 [↑ Back to top](#ai-advent)
 
@@ -223,13 +230,14 @@ The agent stores the full message history locally but only sends a compressed ve
 - **Compression event pill** in the chat when a summary is generated
 - **Toggle** to switch compression on/off mid-conversation for quality comparison
 
-<video src="https://github.com/user-attachments/assets/5e930907-af47-4521-aa0d-b7a1f2d25c0a" width="640" height="360" controls></video>
+<video src="https://github.com/user-attachments/assets/5e930907-af47-4521-aa0d-b7a1f2d25c0a" controls></video>
+
+</details>
 
 ---
 
-<a name="day-10"></a>
-
-## Day 10 — Context Strategies
+<details>
+<summary><a name="day-10"></a><strong>Day 10 — Context Strategies</strong></summary>
 
 [↑ Back to top](#ai-advent)
 
@@ -294,4 +302,6 @@ main branch
    switch any time — each branch keeps its own independent history
 ```
 
-<video src="https://github.com/user-attachments/assets/92266dc3-6002-4a72-b089-110e44eed9e4" width="640" height="360" controls></video>
+<video src="https://github.com/user-attachments/assets/92266dc3-6002-4a72-b089-110e44eed9e4" controls></video>
+
+</details>
