@@ -235,30 +235,63 @@ https://github.com/user-attachments/assets/5e930907-af47-4521-aa0d-b7a1f2d25c0a
 
 A single agent with three switchable context management strategies, each with a live message history panel showing exactly which messages were sent in the last request and which were not.
 
-**The three strategies:**
+| | Sliding Window | Sticky Facts | Branching |
+|---|---|---|---|
+| **How it works** | Sends only the last N messages; everything older is dropped | Extracts key facts after each turn into a key-value store; sends facts + last N messages | Full history always sent; set a checkpoint to fork independent branches |
+| **Pros** | Predictable token cost, simple, zero extra API calls | Key decisions survive indefinitely regardless of conversation length; token cost stays low | No information loss; explore multiple directions from the same starting point |
+| **Cons** | Model forgets everything beyond the window — names, goals, decisions are gone | Extra API call per turn; extraction can miss nuance; facts can go stale | Token cost grows linearly with history; deep branches are expensive |
+| **Best for** | Short task-focused sessions, customer support, simple Q&A | Requirement gathering, planning sessions, long multi-topic conversations | Design exploration, A/B prompt testing, tutoring with different explanation angles |
 
 ### Sliding Window
-Only the last N messages are sent to the model. Everything older is silently dropped — the model never sees it.
 
-- **How it works:** after every turn, slice `history[-N:]` and use that as the API payload. N is adjustable via a slider.
-- **Pros:** predictable token cost, simple to implement, zero extra API calls.
-- **Cons:** loses all context beyond the window — the model forgets names, decisions, and goals from earlier in the conversation.
-- **Best for:** short task-focused sessions, customer support scripts, simple Q&A, any scenario where old turns genuinely don't matter.
+```
+Full history              Sent to API
+─────────────────         ──────────────────────
+ 1  user: Hello     ✗
+ 2  ai:   Hi there  ✗          window (N = 4)
+ 3  user: My name…  ✗       ┌─────────────────┐
+ 4  ai:   Got it    ✓  ───▶ │ 4  ai:   Got it │
+ 5  user: Budget?   ✓       │ 5  user: Budget? │
+ 6  ai:   Sure      ✓       │ 6  ai:   Sure    │
+ 7  user: New msg   ✓       │ 7  user: New msg │
+                            └─────────────────┘
+msgs 1–3 are permanently gone from model's view
+```
 
 ### Sticky Facts
-After every user message, a separate extraction call pulls key facts (goal, constraints, preferences, decisions, names, numbers) into a compact key-value store. Each request sends: `[facts block] + last N messages`.
 
-- **How it works:** the facts dict is updated after each turn via a lightweight extraction prompt. The main request prepends the facts as a synthetic message pair before the recent window.
-- **Pros:** critical information survives indefinitely regardless of conversation length; token cost stays low; the model always knows the goal and decisions even if the original messages are gone.
-- **Cons:** requires an extra API call per turn; extraction can miss nuance or misparse complex values; facts can go stale if the user changes direction.
-- **Best for:** requirement gathering, planning sessions, long multi-topic conversations where key decisions must stay in context.
+```
+Full history              Sent to API
+─────────────────         ──────────────────────
+ 1  user: Hello           ┌─ facts (extracted) ─┐
+ 2  ai:   Hi there        │ goal: build app      │
+ 3  user: Budget $10k ───▶│ budget: $10 000      │
+ 4  ai:   Noted           │ deadline: Q3         │
+ 5  user: Done Q3   ✗     └─────────────────────┘
+ 6  ai:   Great     ✓          + window (N = 4)
+ 7  user: Tech?     ✓       6  ai:   Great
+ 8  user: New msg   ✓       7  user: Tech?
+                            8  user: New msg
+```
 
 ### Branching
-Full conversation history is always sent — no truncation. A checkpoint can be set at any message, and new branches forked from that point. Each branch is an independent conversation that can be continued and switched between freely.
 
-- **How it works:** branches are stored as separate message lists sharing a common prefix up to the checkpoint. Switching branches replaces the active history; the message history panel updates immediately to reflect the new branch.
-- **Pros:** lets you explore "what if" directions from the same starting point without losing either path; great for comparing different approaches side by side.
-- **Cons:** token cost grows linearly with history length (no compression); branching many times from deep conversations uses a lot of tokens per request.
-- **Best for:** design exploration, A/B prompt testing, negotiation scenarios, educational tutoring where you want to try different explanation angles from the same setup.
+```
+main branch
+──────────────────────────────────────────
+ 1  user: Let's build X
+ 2  ai:   Sure, options are A or B
+ 3  user: Tell me more            ← checkpoint set here
+                │
+        ┌───────┴────────┐
+        │                │
+   branch-1          branch-2
+   ─────────          ─────────
+   4  user: Go with A   4  user: Go with B
+   5  ai:   Here's A…   5  ai:   Here's B…
+   6  user: …           6  user: …
+
+   switch any time — each branch keeps its own independent history
+```
 
 https://github.com/user-attachments/assets/92266dc3-6002-4a72-b089-110e44eed9e4
