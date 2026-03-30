@@ -15,6 +15,8 @@
 - [Day 8 — Token Inspector](#day-8)
 - [Day 9 — History Compression](#day-9)
 - [Day 10 — Context Strategies](#day-10)
+
+**Week 3**
 - [Day 11 — Memory Layers](#day-11)
 
 ---
