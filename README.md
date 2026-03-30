@@ -15,6 +15,7 @@
 - [Day 8 — Token Inspector](#day-8)
 - [Day 9 — History Compression](#day-9)
 - [Day 10 — Context Strategies](#day-10)
+- [Day 11 — Memory Layers](#day-11)
 
 ---
 
@@ -329,5 +330,37 @@ main branch
 <details><summary>Watch demo</summary>
 
 https://github.com/user-attachments/assets/92266dc3-6002-4a72-b089-110e44eed9e4
+
+</details>
+
+---
+
+<a name="day-11"></a>
+
+## Day 11 — Memory Layers
+
+[↑ Back to top](#ai-advent)
+
+An agent with three explicitly separated memory layers. Each type stores different information, lives in a different place, and is injected into the model context differently. The sidebar shows all three layers updating live as you chat.
+
+**The three layers:**
+
+| | Short-term | Working | Long-term |
+|---|---|---|---|
+| **What it stores** | Raw dialog messages for the current session | Goal, entities, constraints, decisions, notes for the current task | User profile, broad project context, cross-session behavioral instructions |
+| **How it's updated** | Every message automatically | Extracted by a separate LLM call after each turn | Extracted by a separate LLM call after each turn; also editable manually |
+| **Where it lives** | In-memory only | In-memory only | Persisted to `long_term.json` — survives restarts |
+| **How it's used** | Sent as the `messages` array to the API | Injected into the system prompt as `[WORKING MEMORY]` | Injected into the system prompt as `[LONG-TERM MEMORY]` |
+| **When to clear** | Start a new session | Switch to a different task | Manually via the UI |
+
+**Why separate layers matter:**
+
+- **Short-term** keeps the raw conversation intact so the model can follow dialogue naturally. Clearing it resets the session without losing anything else.
+- **Working memory** survives within a task even if you rephrase or circle back — the model always knows the goal and constraints without you repeating them. Clearing it tells the agent you've moved on to something new.
+- **Long-term** carries identity and context across completely separate sessions. The model knows who you are, what stack you use, and how you like to work — before you say a word.
+
+<details><summary>Watch demo</summary>
+
+https://github.com/user-attachments/assets/8abef364-729c-4db3-aac8-660617bd0290
 
 </details>
