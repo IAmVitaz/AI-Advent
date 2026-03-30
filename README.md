@@ -18,9 +18,9 @@
 
 ---
 
-<details>
-<summary><strong>Day 1 — Script to Anki Deck</strong></summary>
 <a name="day-1"></a>
+
+## Day 1 — Script to Anki Deck
 
 [↑ Back to top](#ai-advent)
 
@@ -30,13 +30,11 @@ A Python web app that converts scripts into Anki flashcard decks for spaced repe
 
 [GitHub →](https://github.com/IAmVitaz/ScriptToAnkiDeck)
 
-</details>
-
 ---
 
-<details>
-<summary><strong>Day 2 — Response Control Comparison</strong></summary>
 <a name="day-2"></a>
+
+## Day 2 — Response Control Comparison
 
 [↑ Back to top](#ai-advent)
 
@@ -44,13 +42,11 @@ A simple Python web app with a split-panel chat interface that sends the same qu
 
 <video src="https://github.com/user-attachments/assets/549311e9-9428-47a9-8ea5-03430cdb5ad4" controls></video>
 
-</details>
-
 ---
 
-<details>
-<summary><strong>Day 3 — Reasoning Mode Comparison</strong></summary>
 <a name="day-3"></a>
+
+## Day 3 — Reasoning Mode Comparison
 
 [↑ Back to top](#ai-advent)
 
@@ -68,13 +64,11 @@ The test problem: *"I have a metal cup with the bottom missing and the top seale
 
 <video src="https://github.com/user-attachments/assets/a4392ef7-f0a0-45fb-bed6-e8fc80dabe7c" controls></video>
 
-</details>
-
 ---
 
-<details>
-<summary><strong>Day 4 — Temperature Comparison</strong></summary>
 <a name="day-4"></a>
+
+## Day 4 — Temperature Comparison
 
 [↑ Back to top](#ai-advent)
 
@@ -101,13 +95,11 @@ At temperature 0 the model locked onto "dragon" with zero deviation across all 2
 
 <video src="https://github.com/user-attachments/assets/593d5c09-75ad-4986-baf0-d84cb36c472f" controls></video>
 
-</details>
-
 ---
 
-<details>
-<summary><strong>Day 5 — Model Strength Comparison</strong></summary>
 <a name="day-5"></a>
+
+## Day 5 — Model Strength Comparison
 
 [↑ Back to top](#ai-advent)
 
@@ -136,13 +128,11 @@ A Python web app that sends the same prompt to three Claude models simultaneousl
 
 <video src="https://github.com/user-attachments/assets/8b2e0cc5-b7af-45c1-838c-5cd3bcc0a8c6" controls></video>
 
-</details>
-
 ---
 
-<details>
-<summary><strong>Day 6 — First Agent</strong></summary>
 <a name="day-6"></a>
+
+## Day 6 — First Agent
 
 [↑ Back to top](#ai-advent)
 
@@ -157,13 +147,11 @@ A Python web app implementing a simple stateful chat agent. Unlike previous days
 
 <video src="https://github.com/user-attachments/assets/0d45c3c8-995a-4aa9-8bb7-4bd209f2f3ac" controls></video>
 
-</details>
-
 ---
 
-<details>
-<summary><strong>Day 7 — Persistent Agent</strong></summary>
 <a name="day-7"></a>
+
+## Day 7 — Persistent Agent
 
 [↑ Back to top](#ai-advent)
 
@@ -184,13 +172,11 @@ Extends the Day 6 agent with persistent conversation history. The agent saves th
 
 <video src="https://github.com/user-attachments/assets/afcb4fb9-c771-43af-afea-e179252a455e" controls></video>
 
-</details>
-
 ---
 
-<details>
-<summary><strong>Day 8 — Token Inspector</strong></summary>
 <a name="day-8"></a>
+
+## Day 8 — Token Inspector
 
 [↑ Back to top](#ai-advent)
 
@@ -213,13 +199,11 @@ A configurable demo limit (default 1,500 tokens) makes the overflow threshold ea
 
 <video src="https://github.com/user-attachments/assets/26d08bee-b99d-4dda-9e2d-9f2006bb8414" controls></video>
 
-</details>
-
 ---
 
-<details>
-<summary><strong>Day 9 — History Compression</strong></summary>
 <a name="day-9"></a>
+
+## Day 9 — History Compression
 
 [↑ Back to top](#ai-advent)
 
@@ -241,13 +225,11 @@ The agent stores the full message history locally but only sends a compressed ve
 
 <video src="https://github.com/user-attachments/assets/5e930907-af47-4521-aa0d-b7a1f2d25c0a" controls></video>
 
-</details>
-
 ---
 
-<details>
-<summary><strong>Day 10 — Context Strategies</strong></summary>
 <a name="day-10"></a>
+
+## Day 10 — Context Strategies
 
 [↑ Back to top](#ai-advent)
 
@@ -313,5 +295,3 @@ main branch
 ```
 
 <video src="https://github.com/user-attachments/assets/92266dc3-6002-4a72-b089-110e44eed9e4" controls></video>
-
-</details>
