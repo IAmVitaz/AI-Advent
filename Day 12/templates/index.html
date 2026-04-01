@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude — Personalized Agent</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f0f0f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ── */
+    .top-bar {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 0 20px;
+      height: 48px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .top-bar-title { font-size: 14px; font-weight: 700; flex: 1; letter-spacing: -0.2px; }
+    .top-bar-btn {
+      padding: 5px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .top-bar-btn:hover { opacity: 0.8; }
+    .btn-short   { background: #6366f1; color: #fff; }
+    .btn-working { background: #10b981; color: #fff; }
+
+    /* ── Main layout ── */
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      gap: 10px;
+      padding: 10px;
+    }
+
+    /* ── Memory sidebar ── */
+    .sidebar {
+      width: 340px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+    }
+
+    .memory-card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .memory-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      cursor: pointer;
+      user-select: none;
+    }
+    .memory-card-header:hover { opacity: 0.85; }
+
+    .card-profile .memory-card-header { background: #f3e8ff; color: #7e22ce; }
+    .card-short   .memory-card-header { background: #ede9fe; color: #4f46e5; }
+    .card-working .memory-card-header { background: #d1fae5; color: #065f46; }
+    .card-long    .memory-card-header { background: #fef3c7; color: #92400e; }
+
+    .card-badge {
+      margin-left: auto;
+      background: rgba(0,0,0,0.12);
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 11px;
+    }
+    .card-chevron { margin-left: 4px; transition: transform 0.2s; }
+    .card-chevron.open { transform: rotate(90deg); }
+
+    .memory-card-body {
+      padding: 10px 14px 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #374151;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+    .memory-card-body.collapsed { display: none; }
+
+    /* ── Profile card ── */
+    .profile-list { display: flex; flex-direction: column; gap: 5px; }
+
+    .profile-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1.5px solid #e9d5ff;
+      background: #faf5ff;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      color: #6b21a8;
+      transition: all 0.15s;
+      text-align: left;
+      width: 100%;
+    }
+    .profile-btn:hover  { background: #f3e8ff; border-color: #c084fc; }
+    .profile-btn.active { background: #7e22ce; color: #fff; border-color: #7e22ce; }
+
+    .profile-btn-left { display: flex; flex-direction: column; gap: 1px; }
+    .profile-meta { font-size: 10px; opacity: 0.7; font-weight: 400; margin-top: 1px; }
+    .profile-btn.active .profile-meta { opacity: 0.8; }
+
+    .profile-del {
+      border: none; background: transparent; cursor: pointer;
+      color: #c084fc; font-size: 14px; line-height: 1; padding: 0 2px;
+      flex-shrink: 0;
+    }
+    .profile-btn.active .profile-del { color: #e9d5ff; }
+    .profile-del:hover { color: #9333ea; }
+
+    .profile-create-btn {
+      margin-top: 6px;
+      padding: 6px;
+      border-radius: 8px;
+      border: 1.5px dashed #c084fc;
+      background: transparent;
+      color: #9333ea;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.15s;
+    }
+    .profile-create-btn:hover { background: #f3e8ff; }
+
+    /* short-term messages */
+    .st-msg { margin-bottom: 6px; }
+    .st-msg-role {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #6366f1;
+      margin-bottom: 1px;
+    }
+    .st-msg-role.assistant { color: #7c3aed; }
+    .st-msg-content {
+      background: #f5f3ff;
+      border-radius: 6px;
+      padding: 5px 8px;
+      word-break: break-word;
+      max-height: 56px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: pre-wrap;
+    }
+    .st-msg-content.assistant { background: #ede9fe; }
+
+    /* working memory fields */
+    .wm-field { margin-bottom: 7px; }
+    .wm-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #059669; margin-bottom: 3px; }
+    .wm-value { color: #1f2937; word-break: break-word; }
+    .wm-tag {
+      display: inline-block;
+      background: #d1fae5;
+      color: #065f46;
+      border-radius: 4px;
+      padding: 1px 6px;
+      margin: 2px 2px 0 0;
+      font-size: 11px;
+    }
+    .wm-empty { color: #9ca3af; font-style: italic; }
+
+    /* long-term memory */
+    .lt-section { margin-bottom: 10px; }
+    .lt-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #d97706;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .lt-add-btn {
+      font-size: 10px;
+      background: #fef3c7;
+      border: none;
+      border-radius: 4px;
+      padding: 1px 6px;
+      cursor: pointer;
+      color: #92400e;
+      font-weight: 600;
+    }
+    .lt-add-btn:hover { background: #fde68a; }
+
+    .lt-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 4px;
+      margin-bottom: 4px;
+      padding: 4px 6px;
+      background: #fffbeb;
+      border-radius: 6px;
+    }
+    .lt-row-text { flex: 1; word-break: break-word; }
+    .lt-row-key { font-weight: 600; color: #92400e; }
+    .lt-del-btn {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      color: #d97706;
+      font-size: 13px;
+      line-height: 1;
+      flex-shrink: 0;
+      padding: 0 2px;
+    }
+    .lt-del-btn:hover { color: #b45309; }
+    .lt-empty { color: #9ca3af; font-style: italic; font-size: 11px; }
+
+    .lt-add-form {
+      display: none;
+      gap: 4px;
+      margin-top: 5px;
+    }
+    .lt-add-form.open { display: flex; }
+    .lt-add-form input {
+      flex: 1;
+      border: 1px solid #fcd34d;
+      border-radius: 5px;
+      padding: 4px 7px;
+      font-size: 11px;
+      outline: none;
+    }
+    .lt-add-form input:focus { border-color: #d97706; }
+    .lt-add-form button {
+      background: #f59e0b;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 4px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    /* ── Chat column ── */
+    .chat-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .msg-wrap { display: flex; flex-direction: column; }
+    .msg-wrap.user  { align-items: flex-end; }
+    .msg-wrap.assistant { align-items: flex-start; }
+
+    .bubble {
+      max-width: 72%;
+      padding: 9px 13px;
+      border-radius: 14px;
+      font-size: 13.5px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .bubble.user      { background: #6366f1; color: #fff; border-bottom-right-radius: 4px; }
+    .bubble.assistant { background: #f3f4f6; color: #1f2937; border-bottom-left-radius: 4px; }
+    .bubble.streaming { opacity: 0.85; }
+
+    .msg-meta {
+      font-size: 10px;
+      color: #9ca3af;
+      margin-top: 3px;
+      padding: 0 4px;
+    }
+
+    /* stat pill row */
+    .stat-row {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      padding: 0 4px;
+      margin-top: 4px;
+    }
+    .stat-pill {
+      background: #f3f4f6;
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-size: 10px;
+      color: #6b7280;
+    }
+    .stat-pill.profile-pill {
+      background: #f3e8ff;
+      color: #7e22ce;
+    }
+
+    /* ── Input bar ── */
+    .input-bar {
+      padding: 12px 14px;
+      border-top: 1px solid #f0f0f0;
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+    textarea {
+      flex: 1;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-size: 13.5px;
+      resize: none;
+      font-family: inherit;
+      outline: none;
+      line-height: 1.5;
+      max-height: 120px;
+      overflow-y: auto;
+      transition: border-color 0.15s;
+    }
+    textarea:focus { border-color: #6366f1; }
+    .send-btn {
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    .send-btn:disabled { opacity: 0.5; cursor: default; }
+    .send-btn:not(:disabled):hover { opacity: 0.85; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+      gap: 8px;
+    }
+    .empty-state svg { opacity: 0.3; }
+    .empty-state p { font-size: 14px; }
+
+    /* ── Profile create modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 14px;
+      padding: 22px 24px;
+      width: 380px;
+      max-width: 95vw;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .modal h3 { font-size: 15px; font-weight: 700; color: #1f2937; }
+    .modal-field { display: flex; flex-direction: column; gap: 3px; }
+    .modal-field label { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
+    .modal-field input,
+    .modal-field select,
+    .modal-field textarea {
+      width: 100%;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+    }
+    .modal-field input:focus,
+    .modal-field select:focus,
+    .modal-field textarea:focus { border-color: #9333ea; }
+    .modal-row { display: flex; gap: 10px; }
+    .modal-row .modal-field { flex: 1; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+    .modal-cancel {
+      padding: 7px 16px; border: 1.5px solid #e5e7eb; border-radius: 8px;
+      background: transparent; font-size: 13px; cursor: pointer;
+    }
+    .modal-save {
+      padding: 7px 16px; border: none; border-radius: 8px;
+      background: #7e22ce; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .modal-save:hover { opacity: 0.88; }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Top bar ── -->
+<div class="top-bar">
+  <span class="top-bar-title">Day 12 — Personalized Agent</span>
+  <button class="top-bar-btn btn-short"   onclick="resetShort()">Clear Short-term</button>
+  <button class="top-bar-btn btn-working" onclick="resetWorking()">Clear Working</button>
+</div>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- ── Chat ── -->
+  <div class="chat-col">
+    <div class="chat-messages" id="messages">
+      <div class="empty-state" id="empty-state">
+        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/>
+        </svg>
+        <p>Select a profile and start chatting to see personalization in action.</p>
+      </div>
+    </div>
+    <div class="input-bar">
+      <textarea id="input" rows="1" placeholder="Type a message…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="send-btn" onclick="send()">Send</button>
+    </div>
+  </div>
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+
+    <!-- Profile -->
+    <div class="memory-card card-profile" id="card-profile">
+      <div class="memory-card-header" onclick="toggleCard('profile')">
+        <span>User Profile</span>
+        <span class="card-badge" id="badge-profile">default</span>
+        <span class="card-chevron open" id="chev-profile">▶</span>
+      </div>
+      <div class="memory-card-body" id="body-profile">
+        <div class="profile-list" id="profile-list"></div>
+        <button class="profile-create-btn" onclick="openCreateModal()">+ Create custom profile</button>
+      </div>
+    </div>
+
+    <!-- Short-term -->
+    <div class="memory-card card-short" id="card-short">
+      <div class="memory-card-header" onclick="toggleCard('short')">
+        <span>Short-term memory</span>
+        <span class="card-badge" id="badge-short">0 msgs</span>
+        <span class="card-chevron open" id="chev-short">▶</span>
+      </div>
+      <div class="memory-card-body" id="body-short">
+        <div class="wm-empty">No messages yet.</div>
+      </div>
+    </div>
+
+    <!-- Working -->
+    <div class="memory-card card-working" id="card-working">
+      <div class="memory-card-header" onclick="toggleCard('working')">
+        <span>Working memory</span>
+        <span class="card-badge" id="badge-working">empty</span>
+        <span class="card-chevron open" id="chev-working">▶</span>
+      </div>
+      <div class="memory-card-body" id="body-working">
+        <div class="wm-empty">Extracted automatically from conversation.</div>
+      </div>
+    </div>
+
+    <!-- Long-term -->
+    <div class="memory-card card-long" id="card-long">
+      <div class="memory-card-header" onclick="toggleCard('long')">
+        <span>Long-term memory</span>
+        <span class="card-badge" id="badge-long">0 items</span>
+        <span class="card-chevron open" id="chev-long">▶</span>
+      </div>
+      <div class="memory-card-body" id="body-long">
+        <div id="lt-content"></div>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+</div><!-- /main -->
+
+<!-- ── Profile create modal ── -->
+<div class="modal-overlay" id="profile-modal" onclick="handleModalOverlayClick(event)">
+  <div class="modal">
+    <h3>Create Custom Profile</h3>
+    <div class="modal-field">
+      <label>Profile Name</label>
+      <input id="pf-name" placeholder="e.g. My Coding Assistant" />
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Style</label>
+        <select id="pf-style">
+          <option value="balanced">Balanced</option>
+          <option value="formal">Formal</option>
+          <option value="casual">Casual</option>
+          <option value="technical">Technical</option>
+          <option value="friendly">Friendly</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Format</label>
+        <select id="pf-format">
+          <option value="natural">Natural</option>
+          <option value="concise">Concise</option>
+          <option value="detailed">Detailed</option>
+          <option value="bullet_points">Bullet Points</option>
+          <option value="narrative">Narrative</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Expertise Level</label>
+        <select id="pf-expertise">
+          <option value="intermediate">Intermediate</option>
+          <option value="beginner">Beginner</option>
+          <option value="expert">Expert</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Language</label>
+        <input id="pf-language" placeholder="English" value="English" />
+      </div>
+    </div>
+    <div class="modal-field">
+      <label>Custom Instruction (optional)</label>
+      <textarea id="pf-custom" rows="2" placeholder="Any special instructions for Claude…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-save" onclick="saveCustomProfile()">Save Profile</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+
+let memory = { short_term: { messages: [] }, working: {}, long_term: { profile: {}, decisions: [], knowledge: {} } };
+let activeProfileId = "default";
+let allProfiles = [];
+let busy = false;
+
+// ── Init ───────────────────────────────────────────────────────────────────
+
+(async () => {
+  const [memResp, profResp] = await Promise.all([fetch("/memory"), fetch("/profiles")]);
+  memory = await memResp.json();
+  const profData = await profResp.json();
+  allProfiles = profData.profiles;
+  activeProfileId = profData.active_id;
+  renderAll();
+  renderProfiles();
+  buildLtForms();
+})();
+
+// ── Card toggle ────────────────────────────────────────────────────────────
+
+function toggleCard(which) {
+  const body = document.getElementById(`body-${which}`);
+  const chev = document.getElementById(`chev-${which}`);
+  body.classList.toggle("collapsed");
+  chev.classList.toggle("open");
+}
+
+// ── Profile rendering ──────────────────────────────────────────────────────
+
+const PRESET_IDS = new Set(["default", "developer", "student", "executive"]);
+
+function renderProfiles() {
+  const list  = document.getElementById("profile-list");
+  const badge = document.getElementById("badge-profile");
+  const active = allProfiles.find(p => p.id === activeProfileId);
+  badge.textContent = active?.name ?? activeProfileId;
+
+  list.innerHTML = allProfiles.map(p => {
+    const isActive  = p.id === activeProfileId;
+    const isCustom  = !PRESET_IDS.has(p.id);
+    const meta = [p.style, p.format, p.expertise].join(" · ");
+    const delBtn = isCustom
+      ? `<button class="profile-del" title="Delete profile"
+           onclick="event.stopPropagation(); deleteCustomProfile('${esc(p.id)}')">×</button>`
+      : "";
+    return `<button class="profile-btn${isActive ? " active" : ""}"
+        onclick="switchProfile('${esc(p.id)}')">
+      <div class="profile-btn-left">
+        <span>${esc(p.name)}</span>
+        <span class="profile-meta">${esc(meta)}</span>
+      </div>
+      ${delBtn}
+    </button>`;
+  }).join("");
+}
+
+async function switchProfile(id) {
+  const r = await fetch("/profiles/active", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({id}),
+  });
+  const d = await r.json();
+  activeProfileId = d.active_id;
+  memory = d.memory;
+  renderProfiles();
+  renderAll();
+  restoreChat(d.memory.short_term?.messages ?? []);
+}
+
+function restoreChat(messages) {
+  const container = document.getElementById("messages");
+  if (!messages.length) {
+    const activeProfile = allProfiles.find(p => p.id === activeProfileId);
+    container.innerHTML = `<div class="empty-state" id="empty-state">
+      <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/>
+      </svg>
+      <p>Switched to <strong>${esc(activeProfile?.name ?? activeProfileId)}</strong>. Start a new conversation.</p>
+    </div>`;
+    return;
+  }
+  container.innerHTML = "";
+  for (const m of messages) {
+    appendBubble(m.role, m.content);
+  }
+  scrollToBottom();
+}
+
+async function deleteCustomProfile(id) {
+  if (!confirm("Delete this profile?")) return;
+  await fetch("/profiles/custom/delete", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({id}),
+  });
+  if (activeProfileId === id) {
+    activeProfileId = "default";
+    await fetch("/profiles/active", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({id: "default"}),
+    });
+  }
+  const r = await fetch("/profiles");
+  const d = await r.json();
+  allProfiles = d.profiles;
+  activeProfileId = d.active_id;
+  renderProfiles();
+}
+
+// ── Profile modal ──────────────────────────────────────────────────────────
+
+function openCreateModal() {
+  document.getElementById("pf-name").value     = "";
+  document.getElementById("pf-custom").value   = "";
+  document.getElementById("pf-language").value = "English";
+  document.getElementById("pf-style").value    = "balanced";
+  document.getElementById("pf-format").value   = "natural";
+  document.getElementById("pf-expertise").value = "intermediate";
+  document.getElementById("profile-modal").classList.add("open");
+  setTimeout(() => document.getElementById("pf-name").focus(), 50);
+}
+
+function closeModal() {
+  document.getElementById("profile-modal").classList.remove("open");
+}
+
+function handleModalOverlayClick(e) {
+  if (e.target === document.getElementById("profile-modal")) closeModal();
+}
+
+async function saveCustomProfile() {
+  const name = document.getElementById("pf-name").value.trim();
+  if (!name) { document.getElementById("pf-name").focus(); return; }
+
+  const body = {
+    name,
+    style:              document.getElementById("pf-style").value,
+    format:             document.getElementById("pf-format").value,
+    expertise:          document.getElementById("pf-expertise").value,
+    language:           document.getElementById("pf-language").value.trim() || "English",
+    restrictions:       [],
+    custom_instruction: document.getElementById("pf-custom").value.trim(),
+  };
+
+  const r = await fetch("/profiles/custom", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body),
+  });
+  const newProfile = await r.json();
+  closeModal();
+
+  const r2 = await fetch("/profiles");
+  const d2 = await r2.json();
+  allProfiles = d2.profiles;
+
+  await switchProfile(newProfile.id);
+}
+
+// ── Render all memory panels ───────────────────────────────────────────────
+
+function renderAll() {
+  renderShortTerm();
+  renderWorking();
+  renderLongTerm();
+}
+
+function renderShortTerm() {
+  const msgs = memory.short_term?.messages || [];
+  const body  = document.getElementById("body-short");
+  const badge = document.getElementById("badge-short");
+  badge.textContent = `${msgs.length} msg${msgs.length !== 1 ? "s" : ""}`;
+
+  if (!msgs.length) {
+    body.innerHTML = '<div class="wm-empty">No messages yet.</div>';
+    return;
+  }
+  body.innerHTML = msgs.map(m => `
+    <div class="st-msg">
+      <div class="st-msg-role ${m.role}">${m.role}</div>
+      <div class="st-msg-content ${m.role}">${esc(truncate(m.content, 120))}</div>
+    </div>`).join("");
+}
+
+function renderWorking() {
+  const wm    = memory.working || {};
+  const body  = document.getElementById("body-working");
+  const badge = document.getElementById("badge-working");
+
+  const hasData = wm.goal || Object.keys(wm.entities||{}).length
+    || (wm.constraints||[]).length || (wm.decisions||[]).length || (wm.notes||[]).length;
+
+  badge.textContent = hasData ? "active" : "empty";
+
+  if (!hasData) {
+    body.innerHTML = '<div class="wm-empty">Extracted automatically from conversation.</div>';
+    return;
+  }
+
+  let html = "";
+  if (wm.goal) {
+    html += field("Goal", `<span class="wm-value">${esc(wm.goal)}</span>`);
+  }
+  if (wm.entities && Object.keys(wm.entities).length) {
+    const tags = Object.entries(wm.entities)
+      .map(([k,v]) => `<span class="wm-tag">${esc(k)}: ${esc(v)}</span>`).join("");
+    html += field("Entities", tags);
+  }
+  if (wm.constraints?.length) {
+    html += field("Constraints", wm.constraints.map(c => `<span class="wm-tag">${esc(c)}</span>`).join(""));
+  }
+  if (wm.decisions?.length) {
+    html += field("Decisions", wm.decisions.map(d => `<span class="wm-tag">${esc(d)}</span>`).join(""));
+  }
+  if (wm.notes?.length) {
+    html += field("Notes", wm.notes.map(n => `<span class="wm-tag">${esc(n)}</span>`).join(""));
+  }
+  body.innerHTML = html;
+}
+
+function field(label, content) {
+  return `<div class="wm-field"><div class="wm-label">${label}</div>${content}</div>`;
+}
+
+function renderLongTerm() {
+  const lt    = memory.long_term || {};
+  const body  = document.getElementById("body-long");
+  const badge = document.getElementById("badge-long");
+
+  const total = Object.keys(lt.profile||{}).length
+    + (lt.decisions||[]).length + Object.keys(lt.knowledge||{}).length;
+  badge.textContent = `${total} item${total !== 1 ? "s" : ""}`;
+
+  body.innerHTML = `<div id="lt-content"></div>`;
+  renderLtContent();
+}
+
+function renderLtContent() {
+  const lt  = memory.long_term || {};
+  const el  = document.getElementById("lt-content");
+  if (!el) return;
+
+  let html = "";
+
+  html += ltSection("Profile", "profile",
+    Object.entries(lt.profile||{}).map(([k,v]) => ltKvRow(k, v, `ltDelProfile('${esc(k)}')`)).join("") ||
+    '<div class="lt-empty">Nothing yet.</div>'
+  );
+
+  html += ltSection("Decisions", "decision",
+    (lt.decisions||[]).map((d,i) => ltDecRow(d.text, i)).join("") ||
+    '<div class="lt-empty">Nothing yet.</div>'
+  );
+
+  html += ltSection("Knowledge", "knowledge",
+    Object.entries(lt.knowledge||{}).map(([k,v]) => ltKvRow(k, v, `ltDelKnowledge('${esc(k)}')`)).join("") ||
+    '<div class="lt-empty">Nothing yet.</div>'
+  );
+
+  el.innerHTML = html;
+  attachForms();
+}
+
+function ltSection(title, id, content) {
+  return `
+    <div class="lt-section">
+      <div class="lt-section-title">
+        ${title}
+        <button class="lt-add-btn" onclick="toggleForm('${id}')">+ Add</button>
+      </div>
+      ${content}
+      <div class="lt-add-form" id="form-${id}"></div>
+    </div>`;
+}
+
+function ltKvRow(k, v, onDel) {
+  return `<div class="lt-row">
+    <div class="lt-row-text"><span class="lt-row-key">${esc(k)}:</span> ${esc(v)}</div>
+    <button class="lt-del-btn" onclick="${onDel}">×</button>
+  </div>`;
+}
+
+function ltDecRow(text, i) {
+  return `<div class="lt-row">
+    <div class="lt-row-text">${esc(text)}</div>
+    <button class="lt-del-btn" onclick="ltDelDecision(${i})">×</button>
+  </div>`;
+}
+
+// ── Form attachment ────────────────────────────────────────────────────────
+
+function buildLtForms() { /* forms built inline via attachForms */ }
+
+function attachForms() {
+  const fp = document.getElementById("form-profile");
+  if (fp) fp.innerHTML = `
+    <input id="lt-p-key" placeholder="key (e.g. name)" />
+    <input id="lt-p-val" placeholder="value" />
+    <button onclick="ltAddProfile()">Add</button>`;
+
+  const fd = document.getElementById("form-decision");
+  if (fd) fd.innerHTML = `
+    <input id="lt-d-text" placeholder="decision text" />
+    <button onclick="ltAddDecision()">Add</button>`;
+
+  const fk = document.getElementById("form-knowledge");
+  if (fk) fk.innerHTML = `
+    <input id="lt-k-key" placeholder="key" />
+    <input id="lt-k-val" placeholder="value" />
+    <button onclick="ltAddKnowledge()">Add</button>`;
+}
+
+function toggleForm(id) {
+  const el = document.getElementById(`form-${id}`);
+  if (!el) return;
+  el.classList.toggle("open");
+  if (el.classList.contains("open")) el.querySelector("input")?.focus();
+}
+
+// ── Long-term CRUD ─────────────────────────────────────────────────────────
+
+async function ltAddProfile() {
+  const k = document.getElementById("lt-p-key")?.value.trim();
+  const v = document.getElementById("lt-p-val")?.value.trim();
+  if (!k || !v) return;
+  const r = await fetch("/lt/profile", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({key:k,value:v}) });
+  memory.long_term = await r.json();
+  renderLtContent();
+}
+
+async function ltAddDecision() {
+  const t = document.getElementById("lt-d-text")?.value.trim();
+  if (!t) return;
+  const r = await fetch("/lt/decision", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({text:t}) });
+  memory.long_term = await r.json();
+  renderLtContent();
+}
+
+async function ltAddKnowledge() {
+  const k = document.getElementById("lt-k-key")?.value.trim();
+  const v = document.getElementById("lt-k-val")?.value.trim();
+  if (!k || !v) return;
+  const r = await fetch("/lt/knowledge", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({key:k,value:v}) });
+  memory.long_term = await r.json();
+  renderLtContent();
+}
+
+async function ltDelProfile(k) {
+  const r = await fetch("/lt/profile/delete", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({key:k}) });
+  memory.long_term = await r.json();
+  renderLtContent();
+}
+
+async function ltDelDecision(idx) {
+  const r = await fetch("/lt/decision/delete", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({idx}) });
+  memory.long_term = await r.json();
+  renderLtContent();
+}
+
+async function ltDelKnowledge(k) {
+  const r = await fetch("/lt/knowledge/delete", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({key:k}) });
+  memory.long_term = await r.json();
+  renderLtContent();
+}
+
+// ── Reset ──────────────────────────────────────────────────────────────────
+
+async function resetShort() {
+  const r = await fetch("/reset/short", { method: "POST" });
+  const d = await r.json();
+  memory = d.memory;
+  renderAll();
+  document.getElementById("messages").innerHTML = `<div class="empty-state" id="empty-state">
+    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/>
+    </svg>
+    <p>Short-term memory cleared. Start a new conversation.</p>
+  </div>`;
+}
+
+async function resetWorking() {
+  const r = await fetch("/reset/working", { method: "POST" });
+  const d = await r.json();
+  memory = d.memory;
+  renderWorking();
+}
+
+// ── Chat ───────────────────────────────────────────────────────────────────
+
+function handleKey(e) {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+}
+
+function autoResize(el) {
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight, 120) + "px";
+}
+
+async function send() {
+  if (busy) return;
+  const input = document.getElementById("input");
+  const msg   = input.value.trim();
+  if (!msg) return;
+
+  input.value = "";
+  autoResize(input);
+  document.getElementById("empty-state")?.remove();
+
+  appendBubble("user", msg);
+  const aWrap  = appendBubble("assistant", "", true);
+  const aBubble = aWrap.querySelector(".bubble");
+
+  busy = true;
+  document.getElementById("send-btn").disabled = true;
+
+  let fullText = "";
+
+  try {
+    const resp = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: msg }),
+    });
+    const reader = resp.body.getReader();
+    const dec    = new TextDecoder();
+    let buf = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        const ev = JSON.parse(line.slice(5).trim());
+        if (ev.type === "text") {
+          fullText += ev.text;
+          aBubble.textContent = fullText;
+          aBubble.classList.remove("streaming");
+          scrollToBottom();
+        } else if (ev.type === "done") {
+          memory = ev.memory;
+          renderAll();
+          appendStats(aWrap, ev);
+        } else if (ev.type === "error") {
+          aBubble.textContent = `Error: ${ev.message}`;
+        }
+      }
+    }
+  } finally {
+    busy = false;
+    document.getElementById("send-btn").disabled = false;
+  }
+}
+
+function appendBubble(role, text, streaming = false) {
+  const msgs = document.getElementById("messages");
+  const wrap = document.createElement("div");
+  wrap.className = `msg-wrap ${role}`;
+  wrap.innerHTML = `<div class="bubble ${role}${streaming ? " streaming" : ""}">${esc(text)}</div>`;
+  msgs.appendChild(wrap);
+  scrollToBottom();
+  return wrap;
+}
+
+function appendStats(wrap, ev) {
+  const activeProfile = allProfiles.find(p => p.id === activeProfileId);
+  const row = document.createElement("div");
+  row.className = "stat-row";
+  row.innerHTML = [
+    `<span class="stat-pill">turn ${ev.turn}</span>`,
+    `<span class="stat-pill">${ev.input_tokens}→${ev.output_tokens} tok</span>`,
+    `<span class="stat-pill">${ev.time}s</span>`,
+    activeProfile ? `<span class="stat-pill profile-pill">${esc(activeProfile.name)}</span>` : "",
+  ].join("");
+  wrap.appendChild(row);
+}
+
+function scrollToBottom() {
+  const el = document.getElementById("messages");
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function truncate(s, n) {
+  return s.length > n ? s.slice(0, n) + "…" : s;
+}
+</script>
+</body>
+</html>

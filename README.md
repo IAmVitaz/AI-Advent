@@ -18,6 +18,7 @@
 
 **Week 3**
 - [Day 11 — Memory Layers](#day-11)
+- [Day 12 — Personalized Agent](#day-12)
 
 ---
 
@@ -364,5 +365,40 @@ An agent with three explicitly separated memory layers. Each type stores differe
 <details><summary>Watch demo</summary>
 
 https://github.com/user-attachments/assets/8abef364-729c-4db3-aac8-660617bd0290
+
+</details>
+
+---
+
+<a name="day-12"></a>
+
+## Day 12 — Personalized Agent
+
+[↑ Back to top](#ai-advent)
+
+Extends Day 11 with user profiles layered on top of the memory model. Each profile defines how the assistant communicates — style, response format, expertise level, language, and custom instructions — and is injected into the system prompt on every request. Each profile is fully isolated — its own behavior settings, long-term memory, chat history, and working memory — so switching profiles is like switching to a different assistant with its own context.
+
+**Four built-in profiles:**
+
+| | Default | Developer | Student | Executive |
+|---|---|---|---|---|
+| **Style** | Balanced | Technical | Friendly | Formal |
+| **Format** | Natural | Concise | Detailed | Bullet points |
+| **Expertise** | Intermediate | Expert | Beginner | Intermediate |
+| **Special** | — | Code examples, skip basics | Step-by-step, analogies | TL;DR first, max 100 words |
+
+Custom profiles can be created with any combination of settings.
+
+**Why profiles are useful:**
+
+The same assistant serves radically different needs depending on who's asking. A developer wants terse, code-first answers with no hand-holding. A student needs slow, jargon-free explanations with examples. An executive wants a one-line summary and three bullets — nothing more. Without profiles, you either over-explain to experts or lose beginners. Profiles make the assistant adapt to the person, not the other way around.
+
+Profiles also decouple *how* the assistant responds from *what* it knows. Long-term memory stores facts about the user; profiles control the communication contract. Both are injected into the system prompt together, so the assistant can be simultaneously informed (by memory) and appropriately tuned (by profile).
+
+**Per-profile memory isolation:** each profile gets its own `long_term_{id}.json`, its own short-term chat history, and its own working memory. Switching profiles saves the current session state and restores the previous one — switching back picks up exactly where you left off.
+
+<details><summary>Watch demo</summary>
+
+https://github.com/user-attachments/assets/cda2f21e-6545-46ba-93fa-5f076978cf32
 
 </details>
