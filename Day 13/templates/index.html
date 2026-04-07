@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude — Task State Machine</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f0f0f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ── */
+    .top-bar {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 0 20px;
+      height: 48px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .top-bar-title { font-size: 14px; font-weight: 700; flex: 1; letter-spacing: -0.2px; }
+    .top-bar-btn {
+      padding: 5px 14px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .top-bar-btn:hover { opacity: 0.8; }
+    .btn-pause  { background: #f59e0b; color: #fff; }
+    .btn-resume { background: #10b981; color: #fff; }
+    .btn-reset  { background: #ef4444; color: #fff; }
+
+    /* ── Main layout ── */
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      gap: 10px;
+      padding: 10px;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 320px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+    }
+
+    .state-card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .state-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: #e0f2fe;
+      color: #0369a1;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
+    .card-badge {
+      margin-left: auto;
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge-idle       { background: #e5e7eb; color: #6b7280; }
+    .badge-planning   { background: #e0e7ff; color: #4338ca; }
+    .badge-execution  { background: #dbeafe; color: #1d4ed8; }
+    .badge-validation { background: #fef3c7; color: #b45309; }
+    .badge-done       { background: #d1fae5; color: #065f46; }
+    .badge-paused     { background: #ffedd5; color: #c2410c; }
+
+    .state-card-body { padding: 12px 14px 14px; }
+
+    /* ── Pipeline ── */
+    .pipeline {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 14px;
+    }
+    .pipeline-stage {
+      flex: 1;
+      text-align: center;
+      padding: 6px 2px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+      color: #9ca3af;
+      background: #f3f4f6;
+      transition: background 0.3s, color 0.3s;
+      cursor: pointer;
+      user-select: none;
+    }
+    .pipeline-stage:hover { opacity: 0.8; }
+    .pipeline-arrow {
+      color: #d1d5db;
+      font-size: 10px;
+      padding: 0 2px;
+      flex-shrink: 0;
+    }
+
+    .pipeline-stage.active-idle       { background: #e5e7eb; color: #374151; }
+    .pipeline-stage.active-planning   { background: #6366f1; color: #fff; }
+    .pipeline-stage.active-execution  { background: #3b82f6; color: #fff; }
+    .pipeline-stage.active-validation { background: #f59e0b; color: #fff; }
+    .pipeline-stage.active-done       { background: #10b981; color: #fff; }
+
+    /* ── State fields ── */
+    .state-field {
+      margin-bottom: 10px;
+    }
+    .state-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #9ca3af;
+      margin-bottom: 3px;
+    }
+    .state-value {
+      font-size: 13px;
+      color: #1f2937;
+      line-height: 1.4;
+    }
+    .state-value.empty { color: #d1d5db; font-style: italic; }
+
+    /* ── Steps history ── */
+    .steps-section { margin-top: 8px; }
+    .steps-toggle {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #6b7280;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+    .steps-toggle:hover { color: #374151; }
+    .steps-chevron { transition: transform 0.2s; }
+    .steps-chevron.open { transform: rotate(90deg); }
+    .steps-list { display: none; }
+    .steps-list.open { display: block; }
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      font-size: 12px;
+      color: #374151;
+      padding: 3px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .step-item:last-child { border-bottom: none; }
+    .step-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #10b981;
+      flex-shrink: 0;
+      margin-top: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+    }
+    .step-text { flex: 1; line-height: 1.4; }
+
+    /* ── Stage quick-select card ── */
+    .stage-select-card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .stage-select-header {
+      padding: 10px 14px;
+      background: #f3f4f6;
+      color: #6b7280;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .stage-select-body {
+      padding: 10px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .stage-btn {
+      padding: 5px 12px;
+      border: 1.5px solid;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      background: transparent;
+      transition: background 0.15s, color 0.15s;
+    }
+    .stage-btn-idle       { border-color: #9ca3af; color: #6b7280; }
+    .stage-btn-planning   { border-color: #6366f1; color: #6366f1; }
+    .stage-btn-execution  { border-color: #3b82f6; color: #3b82f6; }
+    .stage-btn-validation { border-color: #f59e0b; color: #b45309; }
+    .stage-btn-done       { border-color: #10b981; color: #065f46; }
+    .stage-btn:hover { opacity: 0.7; }
+
+    /* ── Chat area ── */
+    .chat-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .msg {
+      display: flex;
+      flex-direction: column;
+      max-width: 82%;
+    }
+    .msg.user   { align-self: flex-end; }
+    .msg.assistant { align-self: flex-start; }
+
+    .msg-bubble {
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+    .msg.user .msg-bubble {
+      background: #6366f1;
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.assistant .msg-bubble {
+      background: #f3f4f6;
+      color: #1f2937;
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg-meta {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 4px;
+      padding: 0 4px;
+    }
+    .msg.user .msg-meta { text-align: right; }
+
+    /* ── Input bar ── */
+    .input-bar {
+      padding: 12px 16px;
+      border-top: 1px solid #f0f0f0;
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+    .input-bar textarea {
+      flex: 1;
+      resize: none;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 9px 13px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      max-height: 120px;
+      transition: border-color 0.2s;
+    }
+    .input-bar textarea:focus { border-color: #6366f1; }
+    .send-btn {
+      padding: 9px 18px;
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      flex-shrink: 0;
+    }
+    .send-btn:hover { opacity: 0.85; }
+    .send-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* ── Paused overlay on chat ── */
+    .paused-banner {
+      display: none;
+      background: #ffedd5;
+      color: #c2410c;
+      text-align: center;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+    .paused-banner.visible { display: block; }
+
+    /* ── Typing indicator ── */
+    .typing-dots {
+      display: flex;
+      gap: 4px;
+      padding: 10px 14px;
+    }
+    .typing-dots span {
+      width: 7px;
+      height: 7px;
+      background: #9ca3af;
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40%            { transform: translateY(-5px); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Top bar ─────────────────────────────────────────────────────────────── -->
+<div class="top-bar">
+  <span class="top-bar-title">Claude — Task State Machine</span>
+  <button class="top-bar-btn btn-pause"  id="pauseBtn"  onclick="pauseTask()">Pause</button>
+  <button class="top-bar-btn btn-resume" id="resumeBtn" onclick="resumeTask()" style="display:none">Resume</button>
+  <button class="top-bar-btn btn-reset"  onclick="resetAll()">Reset</button>
+</div>
+
+<!-- ── Main layout ─────────────────────────────────────────────────────────── -->
+<div class="main">
+
+  <!-- ── Chat area ── -->
+  <div class="chat-wrap">
+    <div class="paused-banner" id="pausedBanner">⏸ Task is paused — click Resume or type "continue" to proceed</div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="msg assistant">
+        <div class="msg-bubble">
+          Hello! I'm your task execution agent. Describe a task you'd like to work on and I'll guide you through it step by step — from planning to execution to validation.
+
+Try something like: "Help me design a REST API for a todo app" or "Walk me through setting up a Python project with tests."
+        </div>
+      </div>
+    </div>
+    <div class="input-bar">
+      <textarea id="msgInput" rows="1" placeholder="Describe a task…" onkeydown="handleKey(event)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+
+    <!-- State card -->
+    <div class="state-card">
+      <div class="state-card-header">
+        Task State
+        <span class="card-badge badge-idle" id="stageBadge">IDLE</span>
+      </div>
+      <div class="state-card-body">
+
+        <!-- Pipeline -->
+        <div class="pipeline">
+          <div class="pipeline-stage active-idle" id="stage-idle"       onclick="forceStage('idle')">Idle</div>
+          <div class="pipeline-arrow">›</div>
+          <div class="pipeline-stage" id="stage-planning"   onclick="forceStage('planning')">Plan</div>
+          <div class="pipeline-arrow">›</div>
+          <div class="pipeline-stage" id="stage-execution"  onclick="forceStage('execution')">Exec</div>
+          <div class="pipeline-arrow">›</div>
+          <div class="pipeline-stage" id="stage-validation" onclick="forceStage('validation')">Valid</div>
+          <div class="pipeline-arrow">›</div>
+          <div class="pipeline-stage" id="stage-done"       onclick="forceStage('done')">Done</div>
+        </div>
+
+        <!-- Fields -->
+        <div class="state-field">
+          <div class="state-label">Task</div>
+          <div class="state-value empty" id="taskName">—</div>
+        </div>
+        <div class="state-field">
+          <div class="state-label">Current Step</div>
+          <div class="state-value empty" id="currentStep">—</div>
+        </div>
+        <div class="state-field">
+          <div class="state-label">Expected Action</div>
+          <div class="state-value empty" id="expectedAction">—</div>
+        </div>
+        <div class="state-field" id="notesField" style="display:none">
+          <div class="state-label">Notes</div>
+          <div class="state-value" id="notesValue"></div>
+        </div>
+
+        <!-- Steps history -->
+        <div class="steps-section" id="stepsSection" style="display:none">
+          <div class="steps-toggle" onclick="toggleSteps()">
+            <span class="steps-chevron" id="stepsChevron">›</span>
+            Completed Steps (<span id="stepsCount">0</span>)
+          </div>
+          <div class="steps-list" id="stepsList"></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+
+</div>
+
+<script>
+  const STAGES = ["idle", "planning", "execution", "validation", "done"];
+
+  // ── State ──────────────────────────────────────────────────────────────────
+
+  let currentState = {
+    task_name: "", stage: "idle", current_step: "",
+    expected_action: "", paused: false, steps_history: [], notes: ""
+  };
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+
+  window.addEventListener("DOMContentLoaded", () => {
+    fetch("/state").then(r => r.json()).then(renderState);
+    autoGrow(document.getElementById("msgInput"));
+  });
+
+  // ── Send message ───────────────────────────────────────────────────────────
+
+  function sendMessage() {
+    const input = document.getElementById("msgInput");
+    const text  = input.value.trim();
+    if (!text) return;
+
+    input.value = "";
+    input.style.height = "";
+    document.getElementById("sendBtn").disabled = true;
+
+    appendUserMsg(text);
+    const assistantEl = appendAssistantTyping();
+
+    const es = new EventSource("/chat?dummy=" + Date.now());   // use POST via fetch SSE pattern
+    // Actually use fetch + ReadableStream for POST
+    es.close();
+
+    let fullText = "";
+    const assistantBubble = assistantEl.querySelector(".msg-bubble");
+    assistantBubble.innerHTML = "";
+
+    fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text }),
+    }).then(res => {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      function read() {
+        reader.read().then(({ done, value }) => {
+          if (done) {
+            document.getElementById("sendBtn").disabled = false;
+            return;
+          }
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const evt = JSON.parse(line.slice(6));
+              if (evt.type === "text") {
+                fullText += evt.text;
+                assistantBubble.textContent = fullText;
+                scrollToBottom();
+              } else if (evt.type === "done") {
+                updateMeta(assistantEl, evt);
+                if (evt.state) renderState(evt.state);
+                document.getElementById("sendBtn").disabled = false;
+              } else if (evt.type === "error") {
+                assistantBubble.textContent = "Error: " + evt.message;
+                document.getElementById("sendBtn").disabled = false;
+              }
+            } catch {}
+          }
+          read();
+        });
+      }
+      read();
+    }).catch(err => {
+      assistantBubble.textContent = "Network error: " + err.message;
+      document.getElementById("sendBtn").disabled = false;
+    });
+  }
+
+  // ── Render state ───────────────────────────────────────────────────────────
+
+  function renderState(s) {
+    currentState = s;
+
+    // Badge
+    const badge = document.getElementById("stageBadge");
+    badge.textContent = s.paused ? "PAUSED" : s.stage.toUpperCase();
+    badge.className = "card-badge " + (s.paused ? "badge-paused" : "badge-" + s.stage);
+
+    // Pipeline
+    STAGES.forEach(stage => {
+      const el = document.getElementById("stage-" + stage);
+      el.className = "pipeline-stage" + (s.stage === stage ? " active-" + stage : "");
+    });
+
+    // Fields
+    setField("taskName", s.task_name);
+    setField("currentStep", s.current_step);
+    setField("expectedAction", s.expected_action);
+
+    if (s.notes) {
+      document.getElementById("notesField").style.display = "";
+      document.getElementById("notesValue").textContent = s.notes;
+    } else {
+      document.getElementById("notesField").style.display = "none";
+    }
+
+    // Steps history
+    const history = s.steps_history || [];
+    document.getElementById("stepsCount").textContent = history.length;
+    if (history.length > 0) {
+      document.getElementById("stepsSection").style.display = "";
+      const list = document.getElementById("stepsList");
+      list.innerHTML = history.map((step, i) =>
+        `<div class="step-item">
+          <div class="step-dot">${i + 1}</div>
+          <div class="step-text">${escHtml(step)}</div>
+        </div>`
+      ).join("");
+    } else {
+      document.getElementById("stepsSection").style.display = "none";
+    }
+
+    // Pause/Resume buttons
+    const pauseBtn  = document.getElementById("pauseBtn");
+    const resumeBtn = document.getElementById("resumeBtn");
+    if (s.paused) {
+      pauseBtn.style.display  = "none";
+      resumeBtn.style.display = "";
+      document.getElementById("pausedBanner").classList.add("visible");
+    } else {
+      pauseBtn.style.display  = "";
+      resumeBtn.style.display = "none";
+      document.getElementById("pausedBanner").classList.remove("visible");
+    }
+  }
+
+  function setField(id, value) {
+    const el = document.getElementById(id);
+    if (value) {
+      el.textContent = value;
+      el.classList.remove("empty");
+    } else {
+      el.textContent = "—";
+      el.classList.add("empty");
+    }
+  }
+
+  // ── Controls ───────────────────────────────────────────────────────────────
+
+  function pauseTask() {
+    fetch("/state/pause", { method: "POST" })
+      .then(r => r.json()).then(d => renderState(d.state));
+  }
+
+  function resumeTask() {
+    fetch("/state/resume", { method: "POST" })
+      .then(r => r.json()).then(d => renderState(d.state));
+  }
+
+  function resetAll() {
+    if (!confirm("Reset the task and chat history?")) return;
+    fetch("/state/reset", { method: "POST" })
+      .then(r => r.json()).then(d => {
+        renderState(d.state);
+        document.getElementById("chatMessages").innerHTML = `
+          <div class="msg assistant">
+            <div class="msg-bubble">Task state reset. Describe a new task to begin.</div>
+          </div>`;
+      });
+  }
+
+  function forceStage(stage) {
+    fetch("/state/transition", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stage }),
+    }).then(r => r.json()).then(d => renderState(d.state));
+  }
+
+  // ── Steps history toggle ───────────────────────────────────────────────────
+
+  function toggleSteps() {
+    const list    = document.getElementById("stepsList");
+    const chevron = document.getElementById("stepsChevron");
+    const open    = list.classList.toggle("open");
+    chevron.classList.toggle("open", open);
+  }
+
+  // ── Chat helpers ───────────────────────────────────────────────────────────
+
+  function appendUserMsg(text) {
+    const el = document.createElement("div");
+    el.className = "msg user";
+    el.innerHTML = `<div class="msg-bubble">${escHtml(text)}</div>
+                    <div class="msg-meta" id="meta-user-${Date.now()}"></div>`;
+    document.getElementById("chatMessages").appendChild(el);
+    scrollToBottom();
+    return el;
+  }
+
+  function appendAssistantTyping() {
+    const el = document.createElement("div");
+    el.className = "msg assistant";
+    el.innerHTML = `<div class="msg-bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>
+                    <div class="msg-meta"></div>`;
+    document.getElementById("chatMessages").appendChild(el);
+    scrollToBottom();
+    return el;
+  }
+
+  function updateMeta(el, evt) {
+    const meta = el.querySelector(".msg-meta");
+    if (meta) meta.textContent = `turn ${evt.turn} · ${evt.input_tokens}↑ ${evt.output_tokens}↓ · ${evt.time}s`;
+  }
+
+  function scrollToBottom() {
+    const c = document.getElementById("chatMessages");
+    c.scrollTop = c.scrollHeight;
+  }
+
+  // ── Input helpers ──────────────────────────────────────────────────────────
+
+  function handleKey(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+    setTimeout(() => autoGrow(e.target), 0);
+  }
+
+  function autoGrow(el) {
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+</script>
+</body>
+</html>

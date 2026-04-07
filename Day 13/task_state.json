@@ -1,0 +1,11 @@
+{
+  "task_name": "Build a Sandwich",
+  "stage": "done",
+  "current_step": "Serve",
+  "expected_action": "User should provide sandwich preferences (bread type, protein, dietary restrictions, style)",
+  "paused": false,
+  "steps_history": [
+    "Cut & Serve"
+  ],
+  "notes": "Classic turkey & veggie sandwich completed. All 6 steps executed: gathered ingredients, prepared base, layered ingredients, assembled, cut diagonally, and served. Validation phase confirmed proper structure and flavor balance."
+}
